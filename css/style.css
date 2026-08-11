@@ -243,6 +243,12 @@ input, select, textarea { font-family: inherit; }
 .exercise-card { border-left: 4px solid var(--accent); }
 .exercise-card.cardio-card { border-left-color: var(--info); }
 .exercise-card .ex-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.exercise-card .ex-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.overload-hint {
+  font-size: 0.8rem; color: var(--accent);
+  background: var(--accent-soft); border-radius: 8px;
+  padding: 6px 10px; margin-top: 6px;
+}
 .exercise-card .ex-title { font-size: 1.05rem; font-weight: 700; }
 .exercise-card .ex-meta { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
 

@@ -103,14 +103,133 @@ function weekAssignment() {
 }
 
 function templateDayById(id) {
-  const tpl = getPlanTemplate();
-  return tpl.days.find((d) => d.id === id) || null;
+  let d = getPlanTemplate().days.find((x) => x.id === id);
+  if (!d) {
+    for (const k of Object.keys(PLAN_TEMPLATES)) {
+      d = PLAN_TEMPLATES[k].days.find((x) => x.id === id);
+      if (d) break;
+    }
+  }
+  return d || null;
 }
 
 function todaysWorkout() {
   const wd = new Date().getDay();
   const map = weekAssignment();
   return map[wd] || null;
+}
+
+/* ---- Exercise resolution (built-in + user's custom exercises) ---- */
+function getEx(id) {
+  return (U && U.customExercises && U.customExercises[id]) || EXERCISES[id] || null;
+}
+function allExerciseIds() {
+  return [...Object.keys(EXERCISES), ...Object.keys((U && U.customExercises) || {})];
+}
+/* A day's exercise list, honouring the user's plan edits */
+function dayExercises(day) {
+  return (U.customPlan && U.customPlan[day.id]) || day.exercises;
+}
+
+const MUSCLE_GROUPS = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Legs", "Core", "Cardio"];
+function muscleGroup(ex) {
+  const primary = (ex.muscle || "").split("/")[0].toLowerCase();
+  if (primary.includes("cardio")) return "Cardio";
+  if (/(quad|hamstring|glute|calf|calv|leg)/.test(primary)) return "Legs";
+  if (/(core|abs|oblique)/.test(primary)) return "Core";
+  if (primary.includes("shoulder")) return "Shoulders";
+  if (primary.includes("bicep")) return "Biceps";
+  if (primary.includes("tricep")) return "Triceps";
+  if (primary.includes("chest")) return "Chest";
+  if (primary.includes("back")) return "Back";
+  return "Other";
+}
+
+/* ---- Progressive overload assistant ---- */
+const BIG_LIFTS = new Set(["leg-press", "barbell-back-squat", "goblet-squat", "db-rdl"]);
+
+function lastPerformance(exId, beforeDate) {
+  const entries = Object.entries(U.logs.workouts)
+    .filter(([d, l]) => (!beforeDate || d < beforeDate) && l.sets && l.sets[exId] && l.sets[exId].some((s) => s.done))
+    .sort((a, b) => b[0].localeCompare(a[0]));
+  if (!entries.length) return null;
+  const [date, log] = entries[0];
+  return { date, sets: log.sets[exId].filter((s) => s.done) };
+}
+
+function overloadSuggestion(exId) {
+  const ex = getEx(exId);
+  const perf = lastPerformance(exId, todayISO());
+  if (!ex || !perf) return null;
+  const summary = perf.sets
+    .map((s) => (ex.needsWeight && s.w !== "" ? s.w + "kg×" : "") + (s.r !== "" ? s.r : "?"))
+    .join(", ");
+  if (!ex.needsWeight) return { date: perf.date, summary, advice: "Beat last time by 1 rep (or a few seconds)." };
+  const weights = perf.sets.map((s) => +s.w || 0);
+  const reps = perf.sets.map((s) => +s.r || 0);
+  const w = Math.max(...weights, 0);
+  const range = String(ex.reps).match(/^(\d+)\s*-\s*(\d+)/);
+  if (!range || !w) return { date: perf.date, summary, advice: "Match last time; add a little when it feels easy." };
+  const bottom = +range[1], top = +range[2];
+  const inc = BIG_LIFTS.has(exId) ? 5 : 2.5;
+  if (reps.length && reps.every((r) => r >= top))
+    return { date: perf.date, summary, advice: `All sets hit ${top} reps — go up to ${w + inc} kg today! 📈` };
+  if (reps.some((r) => r > 0) && reps.every((r) => r < bottom))
+    return { date: perf.date, summary, advice: `Reps fell under ${bottom} — stay at ${w} kg and nail the form.` };
+  return { date: perf.date, summary, advice: `Stay at ${w} kg and try to add 1 rep per set.` };
+}
+
+/* ---- Personal records ---- */
+function bestWeightBefore(exId, excludeDate) {
+  let best = 0;
+  Object.entries(U.logs.workouts).forEach(([date, l]) => {
+    if (date === excludeDate || !l.sets || !l.sets[exId]) return;
+    l.sets[exId].forEach((s) => { if (s.done && +s.w > best) best = +s.w; });
+  });
+  return best;
+}
+function personalRecords() {
+  const prs = {};
+  Object.entries(U.logs.workouts).forEach(([date, l]) => {
+    if (!l.sets) return;
+    Object.entries(l.sets).forEach(([exId, sets]) => {
+      sets.forEach((s) => {
+        if (s.done && +s.w > 0 && (!prs[exId] || +s.w > prs[exId].w)) prs[exId] = { w: +s.w, date };
+      });
+    });
+  });
+  return prs;
+}
+
+/* ---- Deload detection: consecutive training weeks, counting back from now ---- */
+function weeksConsistent() {
+  const weekKey = (iso) => {
+    const dt = new Date(iso + "T12:00:00");
+    dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
+    return todayISO(dt);
+  };
+  const weeks = new Set(
+    Object.entries(U.logs.workouts).filter(([, l]) => l.completed).map(([d]) => weekKey(d))
+  );
+  let count = 0;
+  let cur = weekKey(todayISO());
+  while (weeks.has(cur)) {
+    count++;
+    const d = new Date(cur + "T12:00:00");
+    d.setDate(d.getDate() - 7);
+    cur = todayISO(d);
+  }
+  return count;
+}
+
+/* ---- Generic modal helper ---- */
+function openModal(html) {
+  const wrap = document.createElement("div");
+  wrap.className = "modal-backdrop";
+  wrap.innerHTML = `<div class="modal">${html}</div>`;
+  document.body.appendChild(wrap);
+  wrap.onclick = (e) => { if (e.target === wrap) wrap.remove(); };
+  return wrap;
 }
 
 /* ================= VIDEO ================= */
@@ -611,6 +730,17 @@ function renderDashboard() {
       </div>
     </div>
 
+    ${(() => {
+      const wk = weeksConsistent();
+      const dismissed = U.lastDeloadDismiss && (new Date(todayISO()) - new Date(U.lastDeloadDismiss)) / 86400000 < 28;
+      if (wk < 6 || dismissed) return "";
+      return `<div class="card" style="border-color: rgba(245,158,11,0.5)">
+        <h3>🔋 ${wk} weeks consistent — time for a deload?</h3>
+        <p class="muted small">Every 6-8 weeks, one lighter week (same exercises, ~60% of your usual weights) lets joints and muscles fully recover — you come back stronger. This is what real programs do; it's not slacking.</p>
+        <button class="btn small-btn secondary" id="deloadDismiss" style="margin-top:8px">Got it — remind me again in 4 weeks</button>
+      </div>`;
+    })()}
+
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-num">${latestWeight() || "--"}<span class="small muted"> kg</span></div><div class="stat-label">Current weight</div></div>
       <div class="stat-card"><div class="stat-num">${bmi ?? "--"}</div><div class="stat-label">BMI · <span class="pill ${cls}" style="font-size:0.65rem">${cat}</span></div></div>
@@ -636,6 +766,7 @@ function renderDashboard() {
     </div>`;
 
   const gw = $("#goWorkout"); if (gw) gw.onclick = () => show("workout");
+  const dd = $("#deloadDismiss"); if (dd) dd.onclick = () => { U.lastDeloadDismiss = todayISO(); persist(); renderDashboard(); };
   const gf = $("#goFood"); if (gf) gf.onclick = () => show("food");
   $("#logWeightBtn").onclick = () => {
     const v = +$("#quickWeight").value;
@@ -676,6 +807,7 @@ function renderWorkout(templateDayId = null) {
       : { dayId: day.id, completed: false, sets: {} };
   }
   const log = U.logs.workouts[dateKey];
+  if (!log.swaps) log.swaps = {};
   const isFatLoss = U.profile.goal === "fatloss" || U.profile.goal === "recomp";
 
   let html = `
@@ -688,22 +820,29 @@ function renderWorkout(templateDayId = null) {
       <ul class="checklist">${WARMUP.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>
     </div>`;
 
-  day.exercises.forEach((exId) => {
-    const ex = EXERCISES[exId];
+  const exList = dayExercises(day).map((id) => log.swaps[id] || id);
+  exList.forEach((exId) => {
+    const ex = getEx(exId);
     if (!ex) return;
     const lastW = U.logs.lastWeights[exId];
     const setCount = ex.sets;
     if (!log.sets[exId]) log.sets[exId] = Array.from({ length: setCount }, () => ({ w: lastW || "", r: "", done: false }));
     const sets = log.sets[exId];
+    const sug = overloadSuggestion(exId);
+    const isSwapped = Object.values(log.swaps).includes(exId);
 
     html += `
     <div class="card exercise-card" data-ex="${exId}">
       <div class="ex-head">
         <div>
-          <div class="ex-title">${esc(ex.name)}</div>
-          <div class="ex-meta">${esc(ex.muscle)} · ${esc(ex.equipment)} · ${ex.sets} sets × ${esc(ex.reps)}${lastW ? ` · <span class="accent">last: ${lastW} kg</span>` : ""}</div>
+          <div class="ex-title">${esc(ex.name)} ${isSwapped ? '<span class="pill blue">swapped</span>' : ""}</div>
+          <div class="ex-meta">${esc(ex.muscle)} · ${esc(ex.equipment)} · ${ex.sets} sets × ${esc(ex.reps)}</div>
+          ${sug ? `<div class="overload-hint">📈 Last (${sug.date.slice(5)}): ${esc(sug.summary)} — <strong>${esc(sug.advice)}</strong></div>` : (lastW ? `<div class="overload-hint">📈 Last weight: ${lastW} kg</div>` : "")}
         </div>
-        <button class="btn small-btn secondary toggle-detail">How to ▾</button>
+        <div class="ex-actions">
+          <button class="btn small-btn secondary swap-ex" title="Machine busy? Swap for a similar exercise">⇄</button>
+          <button class="btn small-btn secondary toggle-detail">How to ▾</button>
+        </div>
       </div>
 
       <table class="set-table">
@@ -718,9 +857,9 @@ function renderWorkout(templateDayId = null) {
       </table>
 
       <div class="ex-detail hidden">
-        <p class="muted small">${esc(ex.startWeight)}</p>
-        <ol>${ex.steps.map((st) => `<li>${esc(st)}</li>`).join("")}</ol>
-        <div class="mistake-box">⚠️ <strong>Common mistake:</strong> ${esc(ex.mistake)}</div>
+        ${ex.startWeight ? `<p class="muted small">${esc(ex.startWeight)}</p>` : ""}
+        ${ex.steps && ex.steps.length ? `<ol>${ex.steps.map((st) => `<li>${esc(st)}</li>`).join("")}</ol>` : ""}
+        ${ex.mistake ? `<div class="mistake-box">⚠️ <strong>Common mistake:</strong> ${esc(ex.mistake)}</div>` : ""}
         ${videoBlock(ex)}
       </div>
     </div>`;
@@ -751,13 +890,15 @@ function renderWorkout(templateDayId = null) {
   // Wire up per-exercise interactions
   host.querySelectorAll(".exercise-card[data-ex]").forEach((card) => {
     const exId = card.dataset.ex;
-    const ex = EXERCISES[exId];
+    const ex = getEx(exId);
     const toggle = card.querySelector(".toggle-detail");
     if (toggle) toggle.onclick = () => {
       const det = card.querySelector(".ex-detail");
       det.classList.toggle("hidden");
       toggle.textContent = det.classList.contains("hidden") ? "How to ▾" : "Hide ▴";
     };
+    const swapBtn = card.querySelector(".swap-ex");
+    if (swapBtn) swapBtn.onclick = () => openSwapModal(day, log, exId);
     card.querySelectorAll(".set-w").forEach((inp) => inp.onchange = () => {
       log.sets[exId][+inp.dataset.i].w = inp.value === "" ? "" : +inp.value;
       persist();
@@ -771,7 +912,11 @@ function renderWorkout(templateDayId = null) {
       st.done = cb.checked;
       cb.closest("tr").classList.toggle("set-done", cb.checked);
       if (cb.checked) {
-        if (st.w) { U.logs.lastWeights[exId] = +st.w; }
+        if (st.w) {
+          const prevBest = bestWeightBefore(exId, dateKey);
+          if (prevBest > 0 && +st.w > prevBest) toast(`🎉 New PR on ${ex.name}: ${st.w} kg!`);
+          U.logs.lastWeights[exId] = +st.w;
+        }
         if (ex.restSec > 0) startRestTimer(ex.restSec);
       }
       persist();
@@ -798,6 +943,193 @@ function renderWorkout(templateDayId = null) {
   };
 }
 
+/* ---- Swap an exercise for today's session only ---- */
+function openSwapModal(day, log, exId) {
+  const cur = getEx(exId);
+  const group = muscleGroup(cur);
+  // the slot in the plan this exercise occupies (it may itself be a swap)
+  const slotId = Object.keys(log.swaps).find((k) => log.swaps[k] === exId) || exId;
+  const inUse = new Set(dayExercises(day).map((id) => log.swaps[id] || id));
+  const options = allExerciseIds().filter((id) => {
+    const e = getEx(id);
+    return e && id !== exId && !inUse.has(id) && muscleGroup(e) === group;
+  });
+
+  const wrap = openModal(`
+    <h2>Swap: ${esc(cur.name)}</h2>
+    <p class="muted small">Machine busy or exercise not possible today? Pick a replacement that trains the same muscles (${esc(group)}). This changes today only — your plan stays the same.</p>
+    <div style="margin-top:10px">
+      ${slotId !== exId ? `<div class="food-row"><div class="fr-name">↩ Restore original (${esc(getEx(slotId)?.name || slotId)})</div><div class="qty-controls"><button data-swap="__restore__">Use</button></div></div>` : ""}
+      ${options.map((id) => {
+        const e = getEx(id);
+        return `<div class="food-row">
+          <div><div class="fr-name">${esc(e.name)}</div><div class="fr-sub">${esc(e.muscle)} · ${esc(e.equipment)} · ${e.sets}×${esc(e.reps)}</div></div>
+          <div class="qty-controls"><button data-swap="${id}">Use</button></div>
+        </div>`;
+      }).join("") || `<p class="muted small">No alternatives available for this muscle group.</p>`}
+    </div>
+    <button class="btn secondary block" style="margin-top:12px" id="swapCancel">Cancel</button>`);
+
+  wrap.querySelector("#swapCancel").onclick = () => wrap.remove();
+  wrap.querySelectorAll("[data-swap]").forEach((b) => b.onclick = () => {
+    const chosen = b.dataset.swap;
+    if (chosen === "__restore__" || chosen === slotId) delete log.swaps[slotId];
+    else log.swaps[slotId] = chosen;
+    persist();
+    wrap.remove();
+    renderWorkout(day.id);
+    toast(chosen === "__restore__" ? "Original exercise restored" : "Swapped for today ⇄");
+  });
+}
+
+/* ---- Edit a plan day permanently ---- */
+function openPlanEditor(day) {
+  let list = [...dayExercises(day)];
+
+  const wrap = openModal(`<div id="planEditorBody"></div>`);
+  const body = wrap.querySelector("#planEditorBody");
+
+  const draw = () => {
+    const grouped = {};
+    allExerciseIds().forEach((id) => {
+      const e = getEx(id);
+      if (!e || list.includes(id)) return;
+      const g = muscleGroup(e);
+      (grouped[g] = grouped[g] || []).push(`<option value="${id}">${esc(e.name)} (${e.sets}×${esc(e.reps)})</option>`);
+    });
+    body.innerHTML = `
+      <h2>Edit: ${esc(day.title)}</h2>
+      <p class="muted small">Remove (✕), reorder (↑), or add exercises. This changes the plan permanently — use ⇄ in a workout for one-day swaps.</p>
+      <div style="margin:12px 0">
+        ${list.map((id, i) => {
+          const e = getEx(id);
+          return `<div class="food-row">
+            <div><div class="fr-name">${e ? esc(e.name) : id}</div><div class="fr-sub">${e ? esc(muscleGroup(e)) + " · " + e.sets + "×" + esc(e.reps) : "unknown exercise"}</div></div>
+            <div class="qty-controls">
+              <button data-up="${i}" ${i === 0 ? "disabled" : ""}>↑</button>
+              <button data-rm="${i}">✕</button>
+            </div>
+          </div>`;
+        }).join("") || `<p class="muted small">No exercises — add some below.</p>`}
+      </div>
+      <div class="field"><label>Add exercise</label>
+        <select id="peAdd"><option value="">— pick an exercise —</option>
+          ${MUSCLE_GROUPS.filter((g) => grouped[g]).map((g) => `<optgroup label="${g}">${grouped[g].join("")}</optgroup>`).join("")}
+        </select>
+      </div>
+      <div class="error-msg" id="peErr"></div>
+      <div class="form-row">
+        <button class="btn secondary" id="peReset">Reset to default</button>
+        <button class="btn secondary" id="peCancel">Cancel</button>
+        <button class="btn block" id="peSave">Save ✔</button>
+      </div>`;
+
+    body.querySelectorAll("[data-up]").forEach((b) => b.onclick = () => {
+      const i = +b.dataset.up;
+      [list[i - 1], list[i]] = [list[i], list[i - 1]];
+      draw();
+    });
+    body.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => {
+      list.splice(+b.dataset.rm, 1);
+      draw();
+    });
+    body.querySelector("#peAdd").onchange = (e) => {
+      if (e.target.value) { list.push(e.target.value); draw(); }
+    };
+    body.querySelector("#peCancel").onclick = () => wrap.remove();
+    body.querySelector("#peReset").onclick = () => {
+      if (U.customPlan) delete U.customPlan[day.id];
+      persist();
+      wrap.remove();
+      renderPlan();
+      toast("Day reset to the default plan");
+    };
+    body.querySelector("#peSave").onclick = () => {
+      if (!list.length) { body.querySelector("#peErr").textContent = "A workout day needs at least 1 exercise."; return; }
+      if (!U.customPlan) U.customPlan = {};
+      U.customPlan[day.id] = list;
+      persist();
+      wrap.remove();
+      renderPlan();
+      toast("Plan updated ✔");
+    };
+  };
+  draw();
+}
+
+/* ---- Create / edit a custom exercise ---- */
+function openExerciseModal(existingId, onSaved) {
+  const existing = existingId ? U.customExercises[existingId] : null;
+  const wrap = openModal(`
+    <h2>${existing ? "Edit exercise" : "New exercise"}</h2>
+    <div class="field" style="margin-top:10px"><label>Name</label><input id="cxName" maxlength="60" placeholder="e.g. Chest press machine at my gym" value="${esc(existing ? existing.name : "")}"></div>
+    <div class="form-row">
+      <div class="field"><label>Muscle group</label>
+        <select id="cxGroup">${MUSCLE_GROUPS.map((g) => `<option ${existing && existing.muscle === g ? "selected" : ""}>${g}</option>`).join("")}</select>
+      </div>
+      <div class="field"><label>Equipment</label><input id="cxEquip" maxlength="30" placeholder="e.g. Machine" value="${esc(existing ? existing.equipment : "")}"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Uses weight?</label>
+        <select id="cxWeight"><option value="yes" ${!existing || existing.needsWeight ? "selected" : ""}>Yes — track kg</option><option value="no" ${existing && !existing.needsWeight ? "selected" : ""}>No — bodyweight/time</option></select>
+      </div>
+      <div class="field"><label>Sets</label><input id="cxSets" type="number" min="1" max="10" value="${existing ? existing.sets : 3}"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Reps (e.g. 10-12)</label><input id="cxReps" maxlength="30" value="${esc(existing ? existing.reps : "10-12")}"></div>
+      <div class="field"><label>Rest (seconds)</label><input id="cxRest" type="number" min="0" max="600" value="${existing ? existing.restSec : 90}"></div>
+    </div>
+    <div class="field"><label>YouTube video link (optional)</label><input id="cxVideo" placeholder="https://www.youtube.com/watch?v=..." value="${existing && existing.videoId ? "https://www.youtube.com/watch?v=" + esc(existing.videoId) : ""}"></div>
+    <div class="field"><label>How to do it (optional, one step per line)</label><textarea id="cxSteps">${existing && existing.steps ? esc(existing.steps.join("\n")) : ""}</textarea></div>
+    <div class="error-msg" id="cxErr"></div>
+    <div class="form-row">
+      <button class="btn secondary" id="cxCancel">Cancel</button>
+      <button class="btn block" id="cxSave">Save ✔</button>
+    </div>`);
+
+  wrap.querySelector("#cxCancel").onclick = () => wrap.remove();
+  wrap.querySelector("#cxSave").onclick = () => {
+    const name = wrap.querySelector("#cxName").value.trim();
+    if (!name) { wrap.querySelector("#cxErr").textContent = "Give the exercise a name."; return; }
+    const vid = wrap.querySelector("#cxVideo").value.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([\w-]{11})/);
+    const id = existingId || "cx_" + Date.now().toString(36);
+    if (!U.customExercises) U.customExercises = {};
+    U.customExercises[id] = {
+      name,
+      muscle: wrap.querySelector("#cxGroup").value,
+      equipment: wrap.querySelector("#cxEquip").value.trim() || "—",
+      needsWeight: wrap.querySelector("#cxWeight").value === "yes",
+      sets: Math.min(10, Math.max(1, +wrap.querySelector("#cxSets").value || 3)),
+      reps: wrap.querySelector("#cxReps").value.trim() || "10-12",
+      restSec: Math.max(0, +wrap.querySelector("#cxRest").value || 90),
+      steps: wrap.querySelector("#cxSteps").value.split("\n").map((s) => s.trim()).filter(Boolean),
+      mistake: "", startWeight: "",
+      videoId: vid ? vid[1] : null,
+      search: name + " proper form",
+      custom: true
+    };
+    persist();
+    wrap.remove();
+    toast(existing ? "Exercise updated ✔" : "Exercise added ✔");
+    if (onSaved) onSaved();
+  };
+}
+
+function deleteCustomExercise(id) {
+  delete U.customExercises[id];
+  // strip it from any edited plan days
+  if (U.customPlan) {
+    Object.keys(U.customPlan).forEach((dayId) => {
+      U.customPlan[dayId] = U.customPlan[dayId].filter((x) => x !== id);
+      if (!U.customPlan[dayId].length) delete U.customPlan[dayId];
+    });
+  }
+  // strip from today's swaps
+  const t = U.logs.workouts[todayISO()];
+  if (t && t.swaps) Object.keys(t.swaps).forEach((k) => { if (t.swaps[k] === id || k === id) delete t.swaps[k]; });
+  persist();
+}
+
 /* ================= WEEK PLAN VIEW ================= */
 
 function renderPlan() {
@@ -816,14 +1148,15 @@ function renderPlan() {
     <div class="week-grid">
       ${[1, 2, 3, 4, 5, 6, 0].map((wd) => {
         const d = map[wd];
+        const edited = d && U.customPlan && U.customPlan[d.id];
         return `
         <div class="week-day ${wd === today ? "today-row" : ""} ${d ? "" : "rest-day"}">
           <div class="wd-name">${DAY_NAMES[wd]}</div>
           <div class="wd-info">
-            <div class="wd-title">${d ? esc(d.title) : "Rest"}</div>
-            <div class="wd-sub">${d ? esc(d.focus) + " · " + d.exercises.length + " exercises" : "Recovery day"}</div>
+            <div class="wd-title">${d ? esc(d.title) : "Rest"} ${edited ? '<span class="pill" style="font-size:0.62rem">customized</span>' : ""}</div>
+            <div class="wd-sub">${d ? esc(d.focus) + " · " + dayExercises(d).length + " exercises" : "Recovery day"}</div>
           </div>
-          ${d ? `<button class="btn small-btn secondary" data-day="${d.id}">View</button>` : ""}
+          ${d ? `<button class="btn small-btn secondary" data-editday="${d.id}">✎</button><button class="btn small-btn secondary" data-day="${d.id}">View</button>` : ""}
         </div>`;
       }).join("")}
     </div>
@@ -835,6 +1168,10 @@ function renderPlan() {
   host.querySelectorAll("[data-day]").forEach((b) => b.onclick = () => {
     show("workout");
     renderWorkout(b.dataset.day);
+  });
+  host.querySelectorAll("[data-editday]").forEach((b) => b.onclick = () => {
+    const d = templateDayById(b.dataset.editday);
+    if (d) openPlanEditor(d);
   });
 }
 
@@ -1089,15 +1426,33 @@ function renderProgress() {
     </div>
 
     <div class="card">
+      <h3>🏆 Personal records</h3>
+      ${(() => {
+        const prs = Object.entries(personalRecords()).sort((a, b) => b[1].w - a[1].w);
+        if (!prs.length) return `<p class="muted small">Complete weighted sets and your best lifts appear here. Beat one mid-workout and you'll get a 🎉.</p>`;
+        return `<div style="overflow-x:auto"><table class="protein-table">
+          <tr><th>Exercise</th><th>Best</th><th>Date</th></tr>
+          ${prs.map(([exId, pr]) => {
+            const e = getEx(exId);
+            return `<tr><td>${e ? esc(e.name) : exId}</td><td>${pr.w} kg</td><td class="muted small">${pr.date}</td></tr>`;
+          }).join("")}
+        </table></div>`;
+      })()}
+    </div>
+
+    <div class="card">
       <h3>Workout history</h3>
-      <p class="muted small">${workoutDates.length} workouts completed total 💪</p>
-      <ul class="checklist">
-        ${workoutDates.slice(0, 10).map((d) => {
+      <p class="muted small">${workoutDates.length} workouts completed total 💪 — tap one to see every set.</p>
+      <div>
+        ${workoutDates.slice(0, 15).map((d) => {
           const l = U.logs.workouts[d];
           const day = templateDayById(l.dayId);
-          return `<li>${d} — ${day ? esc(day.title) : "Workout"}</li>`;
-        }).join("") || "<li>No workouts yet — today is a great day to start.</li>"}
-      </ul>
+          return `<div class="food-row">
+            <div><div class="fr-name">${day ? esc(day.title) : "Workout"}</div><div class="fr-sub">${d}</div></div>
+            <div class="qty-controls"><button data-hist="${d}">View</button></div>
+          </div>`;
+        }).join("") || "<p class='muted small'>No workouts yet — today is a great day to start.</p>"}
+      </div>
     </div>`;
 
   if (weights.length >= 2) drawWeightChart($("#weightChart"), weights);
@@ -1117,6 +1472,31 @@ function renderProgress() {
     delete U.logs.photos[b.dataset.date];
     persist(); renderProgress();
   });
+  host.querySelectorAll("[data-hist]").forEach((b) => b.onclick = () => openHistoryModal(b.dataset.hist));
+}
+
+/* ---- Workout history detail ---- */
+function openHistoryModal(date) {
+  const l = U.logs.workouts[date];
+  if (!l) return;
+  const day = templateDayById(l.dayId);
+  const wrap = openModal(`
+    <h2>${day ? esc(day.title) : "Workout"} <span class="pill blue">${date}</span></h2>
+    <div style="margin-top:10px">
+      ${Object.entries(l.sets || {}).map(([exId, sets]) => {
+        const e = getEx(exId);
+        const doneSets = sets.filter((s) => s.done);
+        if (!doneSets.length && !sets.some((s) => s.w || s.r)) return "";
+        return `<div style="margin-bottom:12px">
+          <div class="fr-name">${e ? esc(e.name) : exId}</div>
+          <div class="fr-sub">${sets.map((s, i) =>
+            `Set ${i + 1}: ${s.w !== "" && s.w != null ? s.w + " kg × " : ""}${s.r !== "" && s.r != null ? s.r : "—"} ${s.done ? "✔" : "✗"}`
+          ).join(" · ")}</div>
+        </div>`;
+      }).join("") || `<p class="muted small">No set data was recorded for this workout.</p>`}
+    </div>
+    <button class="btn secondary block" id="histClose">Close</button>`);
+  wrap.querySelector("#histClose").onclick = () => wrap.remove();
 }
 
 function change(weights) {
@@ -1273,6 +1653,19 @@ function renderSettings() {
     </div>
 
     <div class="card">
+      <h2>My exercises</h2>
+      <p class="muted small">Add machines/exercises from your gym that aren't in the app. They become available in plan editing (Plan → ✎) and swaps (⇄).</p>
+      <div id="customExList" style="margin:10px 0">
+        ${Object.entries(U.customExercises || {}).map(([id, e]) => `
+          <div class="food-row">
+            <div><div class="fr-name">${esc(e.name)}</div><div class="fr-sub">${esc(e.muscle)} · ${e.sets}×${esc(e.reps)}${e.videoId ? " · 📹" : ""}</div></div>
+            <div class="qty-controls"><button data-cxedit="${id}">✎</button><button data-cxdel="${id}">🗑</button></div>
+          </div>`).join("") || `<p class="muted small">None yet.</p>`}
+      </div>
+      <button class="btn small-btn" id="addExerciseBtn">➕ New exercise</button>
+    </div>
+
+    <div class="card">
       <h2>Data</h2>
       <p class="muted small">Everything is stored only in this browser (localStorage). Export a backup if you clear browser data or switch devices.</p>
       <div class="form-row" style="margin-top:10px">
@@ -1359,6 +1752,16 @@ function renderSettings() {
     };
     reader.readAsText(f);
   };
+  $("#addExerciseBtn").onclick = () => openExerciseModal(null, renderSettings);
+  host.querySelectorAll("[data-cxedit]").forEach((b) => b.onclick = () => openExerciseModal(b.dataset.cxedit, renderSettings));
+  host.querySelectorAll("[data-cxdel]").forEach((b) => b.onclick = () => {
+    const e = U.customExercises[b.dataset.cxdel];
+    if (e && confirm(`Delete "${e.name}"? It will be removed from your plan too (past workout logs are kept).`)) {
+      deleteCustomExercise(b.dataset.cxdel);
+      renderSettings();
+      toast("Exercise deleted");
+    }
+  });
   $("#logoutBtn").onclick = logout;
   $("#resetBtn").onclick = () => {
     if (confirm("Delete this account and ALL its data from this device? This cannot be undone.")) {

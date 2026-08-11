@@ -1,5 +1,5 @@
 /* HAPA service worker — offline app shell (stale-while-revalidate) */
-const CACHE = "hapa-v1";
+const CACHE = "hapa-v2";
 const ASSETS = [
   "./",
   "./index.html",
