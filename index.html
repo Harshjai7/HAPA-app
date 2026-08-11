@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HAPA — your personal gym trainer. Works fully offline, all data stays on your device.">
+  <title>HAPA — Personal Gym Trainer</title>
+  <meta name="theme-color" content="#0e1117">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HAPA">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="icons/icon-192.png">
+</head>
+<body>
+
+  <!-- ========== AUTH SCREEN ========== -->
+  <div id="authScreen" class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <h1>HA<span>PA</span></h1>
+        <p>Your personal gym trainer — offline, private, yours.</p>
+      </div>
+
+      <!-- Storage warning (shown only if the browser blocks saving) -->
+      <div id="storageWarning" class="card storage-warning hidden">
+        ⚠️ <strong>Your browser is blocking storage</strong> — nothing can be saved and accounts will disappear on refresh.
+        Don't use Incognito/InPrivate mode, and open the app the normal way (double-click index.html in Chrome or Edge).
+      </div>
+
+      <!-- Login -->
+      <form id="loginForm" class="card">
+        <h2>Welcome back</h2>
+        <div id="accountsHint" class="muted small" style="margin-bottom:10px"></div>
+        <div class="field"><label>Name</label><input id="liName" type="text" autocomplete="username" placeholder="Your name" required></div>
+        <div class="field"><label>PIN / Password</label><input id="liPass" type="password" autocomplete="current-password" placeholder="••••" required></div>
+        <div class="error-msg" id="liError"></div>
+        <button type="submit" class="btn block">Log in →</button>
+        <div class="auth-toggle">New here? <a id="showSignup">Create your account</a> · <a id="forgotPin">Forgot PIN?</a></div>
+        <div id="resetBox" class="hidden" style="margin-top:14px; border-top:1px solid var(--border); padding-top:14px">
+          <p class="muted small">Set a new PIN for the name typed above. This works because your data lives only on this device — it's your data.</p>
+          <div class="field" style="margin-top:8px"><label>New PIN (min 4 characters)</label><input id="resetPass" type="password" placeholder="••••"></div>
+          <div class="error-msg" id="resetError"></div>
+          <button type="button" class="btn secondary block" id="resetConfirm">Set new PIN ✔</button>
+        </div>
+      </form>
+
+      <!-- Signup -->
+      <form id="signupForm" class="card hidden">
+        <h2>Create account</h2>
+        <p class="muted small">Stored only on this device — no internet account, no servers, no one else sees your data.</p>
+        <div class="field" style="margin-top:10px"><label>Name</label><input id="suName" type="text" autocomplete="username" placeholder="e.g. Enter your name" required></div>
+        <div class="field"><label>PIN / Password (min 4 characters)</label><input id="suPass" type="password" autocomplete="new-password" placeholder="••••" required></div>
+        <div class="error-msg" id="suError"></div>
+        <button type="submit" class="btn block">Create & continue →</button>
+        <div class="auth-toggle">Already have an account? <a id="showLogin">Log in</a></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== ONBOARDING WIZARD ========== -->
+  <div id="wizardScreen" class="auth-wrap hidden">
+    <div class="auth-card" style="max-width:520px">
+      <div class="auth-logo"><h1 style="font-size:1.6rem">Let's build <span>your plan</span></h1></div>
+      <div class="wizard-progress" id="wizardProgress">
+        <div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div>
+      </div>
+      <div class="card" id="wizardBody"></div>
+    </div>
+  </div>
+
+  <!-- ========== MAIN APP ========== -->
+  <div id="appScreen" class="hidden">
+    <header class="topbar">
+      <div class="logo">HA<span>PA</span></div>
+      <div class="user-chip" id="userChip"></div>
+    </header>
+
+    <main class="app-shell">
+      <section id="view-dashboard" class="hidden"></section>
+      <section id="view-workout" class="hidden"></section>
+      <section id="view-plan" class="hidden"></section>
+      <section id="view-food" class="hidden"></section>
+      <section id="view-progress" class="hidden"></section>
+      <section id="view-guide" class="hidden"></section>
+      <section id="view-settings" class="hidden"></section>
+    </main>
+
+    <!-- Rest timer -->
+    <div id="restTimer" class="rest-timer hidden">
+      <span>⏱ Rest</span>
+      <span class="timer-num" id="timerNum">1:30</span>
+      <button class="btn small-btn secondary" id="timerSkip">Skip</button>
+    </div>
+
+    <nav class="bottom-nav">
+      <button data-view="dashboard"><span class="icon">🏠</span>Home</button>
+      <button data-view="workout"><span class="icon">🏋️</span>Workout</button>
+      <button data-view="plan"><span class="icon">📅</span>Plan</button>
+      <button data-view="food"><span class="icon">🥗</span>Food</button>
+      <button data-view="progress"><span class="icon">📈</span>Progress</button>
+      <button data-view="guide"><span class="icon">📖</span>Guide</button>
+      <button data-view="settings"><span class="icon">⚙️</span>Settings</button>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    // Offline support + installability (needs http/https; skipped for file://)
+    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  </script>
+</body>
+</html>
