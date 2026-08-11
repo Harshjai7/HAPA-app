@@ -21,6 +21,25 @@
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
+/* Light theme — toggled from Settings or the profile popup */
+:root[data-theme="light"] {
+  --bg: #f2f4f8;
+  --bg2: #ffffff;
+  --card: #ffffff;
+  --card2: #eef1f6;
+  --border: #d7dde8;
+  --text: #1a2230;
+  --muted: #5a6a80;
+  --accent: #16a34a;
+  --accent2: #15803d;
+  --accent-soft: rgba(22, 163, 74, 0.1);
+  --shadow: 0 2px 12px rgba(30, 40, 60, 0.08);
+}
+:root[data-theme="light"] .topbar { background: rgba(242, 244, 248, 0.92); }
+:root[data-theme="light"] .bottom-nav { background: rgba(255, 255, 255, 0.97); }
+:root[data-theme="light"] .btn { color: #ffffff; }
+:root[data-theme="light"] .day-picker button.selected { color: #ffffff; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
@@ -381,6 +400,24 @@ table.protein-table { width: 100%; border-collapse: collapse; font-size: 0.85rem
 table.protein-table th { text-align: left; color: var(--muted); font-size: 0.75rem; text-transform: uppercase; padding: 6px 8px; }
 table.protein-table td { padding: 8px; border-top: 1px solid var(--border); }
 table.protein-table td:nth-child(2) { color: var(--accent); font-weight: 700; white-space: nowrap; }
+
+/* ---------- Weekly report / volume bars ---------- */
+.week-report-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.week-report-row .wr-date { width: 56px; font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
+.week-report-row .wr-bar { flex: 1; height: 12px; background: var(--bg2); border-radius: 6px; overflow: hidden; }
+.week-report-row .wr-fill { height: 100%; background: var(--accent); border-radius: 6px; transition: width 0.3s; }
+.week-report-row .wr-fill.over { background: var(--warn); }
+.week-report-row .wr-fill.blue { background: var(--info); }
+.week-report-row .wr-kcal { width: 48px; text-align: right; font-size: 0.78rem; font-weight: 700; flex-shrink: 0; }
+
+/* ---------- Profile popup ---------- */
+.profile-head { display: flex; align-items: center; gap: 14px; }
+.profile-head .profile-photo {
+  width: 64px; height: 64px; border-radius: 50%; object-fit: cover;
+  border: 3px solid var(--accent); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.profile-head h2 { margin-bottom: 2px; }
 
 /* ---------- Toast ---------- */
 .toast {

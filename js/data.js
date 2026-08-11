@@ -589,62 +589,87 @@ const PLAN_TEMPLATES = {
   }
 };
 
-/* ---------- PURE-VEG FOOD DATABASE (no egg) ----------
+/* ---------- FOOD DATABASE ----------
    Approximate values per stated serving. Indian household portions.
+   diet: "vegan" (plant only) | "veg" (dairy, no egg) | "egg" | "nonveg"
+   The app shows foods allowed by the user's diet:
+   vegan -> vegan · veg -> vegan+veg · egg -> +egg · nonveg -> everything
 */
 const FOODS = [
-  { id: "roti",        name: "Roti / Chapati",            serving: "1 medium (40g)",    kcal: 120, protein: 3,    carbs: 18, fat: 3   },
-  { id: "rice",        name: "White Rice (cooked)",       serving: "1 cup (160g)",      kcal: 205, protein: 4,    carbs: 45, fat: 0.5 },
-  { id: "brownrice",   name: "Brown Rice (cooked)",       serving: "1 cup (160g)",      kcal: 215, protein: 5,    carbs: 45, fat: 2   },
-  { id: "dal",         name: "Dal (cooked)",              serving: "1 cup (200g)",      kcal: 200, protein: 12,   carbs: 30, fat: 3   },
-  { id: "paneer",      name: "Paneer",                    serving: "100g",              kcal: 290, protein: 19,   carbs: 5,  fat: 22  },
-  { id: "tofu",        name: "Tofu",                      serving: "100g",              kcal: 76,  protein: 8,    carbs: 2,  fat: 4.5 },
-  { id: "soychunks",   name: "Soya Chunks (dry)",         serving: "50g dry",           kcal: 173, protein: 26,   carbs: 16, fat: 0.5 },
-  { id: "milk",        name: "Milk (toned)",              serving: "1 glass (250ml)",   kcal: 120, protein: 8,    carbs: 12, fat: 4   },
-  { id: "curd",        name: "Curd / Dahi",               serving: "1 cup (200g)",      kcal: 120, protein: 7,    carbs: 9,  fat: 6   },
-  { id: "greekyogurt", name: "Greek Yogurt (plain)",      serving: "100g",              kcal: 90,  protein: 10,   carbs: 4,  fat: 4   },
-  { id: "chana",       name: "Chana / Chickpeas (cooked)",serving: "1 cup (160g)",      kcal: 269, protein: 14.5, carbs: 45, fat: 4   },
-  { id: "rajma",       name: "Rajma (cooked)",            serving: "1 cup (180g)",      kcal: 225, protein: 15,   carbs: 40, fat: 1   },
-  { id: "sprouts",     name: "Moong Sprouts",             serving: "1 cup (100g)",      kcal: 62,  protein: 6,    carbs: 12, fat: 0.5 },
-  { id: "peanuts",     name: "Peanuts (roasted)",         serving: "handful (30g)",     kcal: 170, protein: 7,    carbs: 5,  fat: 14  },
-  { id: "pb",          name: "Peanut Butter",             serving: "1 tbsp (16g)",      kcal: 95,  protein: 4,    carbs: 3,  fat: 8   },
-  { id: "almonds",     name: "Almonds",                   serving: "10 pieces",         kcal: 70,  protein: 2.5,  carbs: 2.5,fat: 6   },
-  { id: "banana",      name: "Banana",                    serving: "1 medium",          kcal: 105, protein: 1,    carbs: 27, fat: 0.5 },
-  { id: "apple",       name: "Apple",                     serving: "1 medium",          kcal: 95,  protein: 0.5,  carbs: 25, fat: 0.5 },
-  { id: "oats",        name: "Oats (dry)",                serving: "40g",               kcal: 150, protein: 5,    carbs: 27, fat: 3   },
-  { id: "poha",        name: "Poha",                      serving: "1 plate (200g)",    kcal: 250, protein: 5,    carbs: 45, fat: 6   },
-  { id: "idli",        name: "Idli",                      serving: "2 pieces",          kcal: 120, protein: 4,    carbs: 24, fat: 0.5 },
-  { id: "dosa",        name: "Plain Dosa",                serving: "1 medium",          kcal: 170, protein: 4,    carbs: 28, fat: 5   },
-  { id: "upma",        name: "Upma",                      serving: "1 bowl (200g)",     kcal: 250, protein: 6,    carbs: 40, fat: 8   },
-  { id: "khichdi",     name: "Khichdi (dal + rice)",      serving: "1 bowl (250g)",     kcal: 250, protein: 9,    carbs: 40, fat: 6   },
-  { id: "besanchilla", name: "Besan Chilla",              serving: "2 medium",          kcal: 200, protein: 10,   carbs: 22, fat: 8   },
-  { id: "sattu",       name: "Sattu Drink",               serving: "30g in water",      kcal: 110, protein: 6,    carbs: 18, fat: 1.5 },
-  { id: "vegsabzi",    name: "Mixed Veg Sabzi",           serving: "1 cup (150g)",      kcal: 120, protein: 3,    carbs: 12, fat: 7   },
-  { id: "palakpaneer", name: "Palak Paneer",              serving: "1 cup (200g)",      kcal: 280, protein: 12,   carbs: 10, fat: 22  },
-  { id: "chole",       name: "Chole (curry)",             serving: "1 cup (200g)",      kcal: 280, protein: 12,   carbs: 40, fat: 9   },
-  { id: "peas",        name: "Green Peas (cooked)",       serving: "1 cup (145g)",      kcal: 118, protein: 8,    carbs: 21, fat: 0.5 },
-  { id: "broccoli",    name: "Broccoli (cooked)",         serving: "1 cup (150g)",      kcal: 55,  protein: 4,    carbs: 11, fat: 0.5 },
-  { id: "quinoa",      name: "Quinoa (cooked)",           serving: "1 cup (185g)",      kcal: 222, protein: 8,    carbs: 39, fat: 3.5 },
-  { id: "buttermilk",  name: "Buttermilk / Chaas",        serving: "1 glass (250ml)",   kcal: 40,  protein: 2,    carbs: 4,  fat: 1.5 },
-  { id: "cheese",      name: "Cheese Slice",              serving: "1 slice (20g)",     kcal: 60,  protein: 4,    carbs: 1,  fat: 5   },
-  { id: "ghee",        name: "Ghee",                      serving: "1 tsp (5g)",        kcal: 45,  protein: 0,    carbs: 0,  fat: 5   },
-  { id: "salad",       name: "Salad Bowl (veg)",          serving: "1 bowl",            kcal: 50,  protein: 2,    carbs: 8,  fat: 1   }
+  { id: "roti",        name: "Roti / Chapati",            serving: "1 medium (40g)",    kcal: 120, protein: 3,    carbs: 18, fat: 3,   diet: "vegan"  },
+  { id: "rice",        name: "White Rice (cooked)",       serving: "1 cup (160g)",      kcal: 205, protein: 4,    carbs: 45, fat: 0.5, diet: "vegan"  },
+  { id: "brownrice",   name: "Brown Rice (cooked)",       serving: "1 cup (160g)",      kcal: 215, protein: 5,    carbs: 45, fat: 2,   diet: "vegan"  },
+  { id: "dal",         name: "Dal (cooked)",              serving: "1 cup (200g)",      kcal: 200, protein: 12,   carbs: 30, fat: 3,   diet: "vegan"  },
+  { id: "paneer",      name: "Paneer",                    serving: "100g",              kcal: 290, protein: 19,   carbs: 5,  fat: 22,  diet: "veg"    },
+  { id: "tofu",        name: "Tofu",                      serving: "100g",              kcal: 76,  protein: 8,    carbs: 2,  fat: 4.5, diet: "vegan"  },
+  { id: "soychunks",   name: "Soya Chunks (dry)",         serving: "50g dry",           kcal: 173, protein: 26,   carbs: 16, fat: 0.5, diet: "vegan"  },
+  { id: "soymilk",     name: "Soy Milk (unsweetened)",    serving: "1 glass (250ml)",   kcal: 83,  protein: 7,    carbs: 4,  fat: 4.5, diet: "vegan"  },
+  { id: "milk",        name: "Milk (toned)",              serving: "1 glass (250ml)",   kcal: 120, protein: 8,    carbs: 12, fat: 4,   diet: "veg"    },
+  { id: "curd",        name: "Curd / Dahi",               serving: "1 cup (200g)",      kcal: 120, protein: 7,    carbs: 9,  fat: 6,   diet: "veg"    },
+  { id: "greekyogurt", name: "Greek Yogurt (plain)",      serving: "100g",              kcal: 90,  protein: 10,   carbs: 4,  fat: 4,   diet: "veg"    },
+  { id: "chana",       name: "Chana / Chickpeas (cooked)",serving: "1 cup (160g)",      kcal: 269, protein: 14.5, carbs: 45, fat: 4,   diet: "vegan"  },
+  { id: "rajma",       name: "Rajma (cooked)",            serving: "1 cup (180g)",      kcal: 225, protein: 15,   carbs: 40, fat: 1,   diet: "vegan"  },
+  { id: "sprouts",     name: "Moong Sprouts",             serving: "1 cup (100g)",      kcal: 62,  protein: 6,    carbs: 12, fat: 0.5, diet: "vegan"  },
+  { id: "peanuts",     name: "Peanuts (roasted)",         serving: "handful (30g)",     kcal: 170, protein: 7,    carbs: 5,  fat: 14,  diet: "vegan"  },
+  { id: "pb",          name: "Peanut Butter",             serving: "1 tbsp (16g)",      kcal: 95,  protein: 4,    carbs: 3,  fat: 8,   diet: "vegan"  },
+  { id: "almonds",     name: "Almonds",                   serving: "10 pieces",         kcal: 70,  protein: 2.5,  carbs: 2.5,fat: 6,   diet: "vegan"  },
+  { id: "banana",      name: "Banana",                    serving: "1 medium",          kcal: 105, protein: 1,    carbs: 27, fat: 0.5, diet: "vegan"  },
+  { id: "apple",       name: "Apple",                     serving: "1 medium",          kcal: 95,  protein: 0.5,  carbs: 25, fat: 0.5, diet: "vegan"  },
+  { id: "oats",        name: "Oats (dry)",                serving: "40g",               kcal: 150, protein: 5,    carbs: 27, fat: 3,   diet: "vegan"  },
+  { id: "poha",        name: "Poha",                      serving: "1 plate (200g)",    kcal: 250, protein: 5,    carbs: 45, fat: 6,   diet: "vegan"  },
+  { id: "idli",        name: "Idli",                      serving: "2 pieces",          kcal: 120, protein: 4,    carbs: 24, fat: 0.5, diet: "vegan"  },
+  { id: "dosa",        name: "Plain Dosa",                serving: "1 medium",          kcal: 170, protein: 4,    carbs: 28, fat: 5,   diet: "vegan"  },
+  { id: "upma",        name: "Upma",                      serving: "1 bowl (200g)",     kcal: 250, protein: 6,    carbs: 40, fat: 8,   diet: "vegan"  },
+  { id: "khichdi",     name: "Khichdi (dal + rice)",      serving: "1 bowl (250g)",     kcal: 250, protein: 9,    carbs: 40, fat: 6,   diet: "vegan"  },
+  { id: "besanchilla", name: "Besan Chilla",              serving: "2 medium",          kcal: 200, protein: 10,   carbs: 22, fat: 8,   diet: "vegan"  },
+  { id: "sattu",       name: "Sattu Drink",               serving: "30g in water",      kcal: 110, protein: 6,    carbs: 18, fat: 1.5, diet: "vegan"  },
+  { id: "vegsabzi",    name: "Mixed Veg Sabzi",           serving: "1 cup (150g)",      kcal: 120, protein: 3,    carbs: 12, fat: 7,   diet: "vegan"  },
+  { id: "palakpaneer", name: "Palak Paneer",              serving: "1 cup (200g)",      kcal: 280, protein: 12,   carbs: 10, fat: 22,  diet: "veg"    },
+  { id: "chole",       name: "Chole (curry)",             serving: "1 cup (200g)",      kcal: 280, protein: 12,   carbs: 40, fat: 9,   diet: "vegan"  },
+  { id: "peas",        name: "Green Peas (cooked)",       serving: "1 cup (145g)",      kcal: 118, protein: 8,    carbs: 21, fat: 0.5, diet: "vegan"  },
+  { id: "broccoli",    name: "Broccoli (cooked)",         serving: "1 cup (150g)",      kcal: 55,  protein: 4,    carbs: 11, fat: 0.5, diet: "vegan"  },
+  { id: "quinoa",      name: "Quinoa (cooked)",           serving: "1 cup (185g)",      kcal: 222, protein: 8,    carbs: 39, fat: 3.5, diet: "vegan"  },
+  { id: "buttermilk",  name: "Buttermilk / Chaas",        serving: "1 glass (250ml)",   kcal: 40,  protein: 2,    carbs: 4,  fat: 1.5, diet: "veg"    },
+  { id: "cheese",      name: "Cheese Slice",              serving: "1 slice (20g)",     kcal: 60,  protein: 4,    carbs: 1,  fat: 5,   diet: "veg"    },
+  { id: "ghee",        name: "Ghee",                      serving: "1 tsp (5g)",        kcal: 45,  protein: 0,    carbs: 0,  fat: 5,   diet: "veg"    },
+  { id: "salad",       name: "Salad Bowl (veg)",          serving: "1 bowl",            kcal: 50,  protein: 2,    carbs: 8,  fat: 1,   diet: "vegan"  },
+  { id: "eggs",        name: "Boiled Eggs",               serving: "2 eggs",            kcal: 155, protein: 13,   carbs: 1,  fat: 11,  diet: "egg"    },
+  { id: "omelette",    name: "Omelette",                  serving: "2 eggs",            kcal: 220, protein: 13,   carbs: 2,  fat: 17,  diet: "egg"    },
+  { id: "eggbhurji",   name: "Egg Bhurji",                serving: "2 eggs",            kcal: 240, protein: 13,   carbs: 4,  fat: 18,  diet: "egg"    },
+  { id: "chickenbreast", name: "Chicken Breast (grilled)",serving: "100g",              kcal: 165, protein: 31,   carbs: 0,  fat: 3.5, diet: "nonveg" },
+  { id: "chickencurry", name: "Chicken Curry",            serving: "1 cup (200g)",      kcal: 280, protein: 25,   carbs: 8,  fat: 16,  diet: "nonveg" },
+  { id: "tandoori",    name: "Tandoori Chicken",          serving: "2 pieces",          kcal: 260, protein: 30,   carbs: 4,  fat: 13,  diet: "nonveg" },
+  { id: "fish",        name: "Fish (grilled)",            serving: "100g",              kcal: 180, protein: 22,   carbs: 2,  fat: 9,   diet: "nonveg" },
+  { id: "fishcurry",   name: "Fish Curry",                serving: "1 cup (200g)",      kcal: 250, protein: 20,   carbs: 8,  fat: 15,  diet: "nonveg" },
+  { id: "prawns",      name: "Prawns (cooked)",           serving: "100g",              kcal: 100, protein: 20,   carbs: 1,  fat: 1.5, diet: "nonveg" },
+  { id: "muttoncurry", name: "Mutton Curry",              serving: "1 cup (200g)",      kcal: 350, protein: 25,   carbs: 6,  fat: 24,  diet: "nonveg" }
 ];
 
-/* ---------- VEG PROTEIN GUIDE (shown in Guide tab) ---------- */
+/* ---------- PROTEIN GUIDE (shown in Guide tab, filtered by diet) ---------- */
+const DIET_LABELS = { vegan: "Vegan 🌱", veg: "Pure Veg (no egg) 🥬", egg: "Veg + Egg 🥚", nonveg: "Non-Veg 🍗" };
+const DIET_NOTES = {
+  vegan: "You're vegan — protein needs real planning, but it's absolutely doable. Soya and dals are your foundation:",
+  veg: "You're pure veg with no eggs — completely fine, but you must be intentional. These are your best friends:",
+  egg: "Veg + eggs gives you the cheapest complete protein there is. Build meals around these:",
+  nonveg: "You have the easiest protein options available — lean meats plus the veg staples:"
+};
 const PROTEIN_GUIDE = {
   target: "Aim for about 1.6g of protein per kg of body weight daily. Example: 70 kg → ~110g protein/day.",
-  note: "You're pure veg with no eggs — completely fine, but you must be intentional. These are your best friends:",
   best: [
-    { food: "Soya chunks (50g dry)", protein: "26g", tip: "The highest veg protein per rupee. Boil, squeeze, add to any sabzi/pulao." },
-    { food: "Paneer (100g)", protein: "19g", tip: "Great, but calorie-dense — weigh portions if fat loss stalls." },
-    { food: "Dal (1 cup cooked)", protein: "12g", tip: "Have dal at both lunch and dinner, not just one." },
-    { food: "Greek yogurt / hung curd (100g)", protein: "10g", tip: "Great evening snack; add fruit." },
-    { food: "Tofu (100g)", protein: "8g", tip: "Cheaper than paneer per gram of protein, much lower fat." },
-    { food: "Milk (1 glass)", protein: "8g", tip: "A glass after your workout is an easy 8g." },
-    { food: "Chana / Rajma (1 cup)", protein: "14-15g", tip: "Also loaded with fiber — keeps you full during fat loss." },
-    { food: "Sattu (30g)", protein: "6g", tip: "Mix in water/buttermilk for a portable protein drink." },
-    { food: "Peanuts / Peanut butter", protein: "7g per handful", tip: "Good protein but very high calorie — measure it." }
+    { food: "Chicken breast (100g)", protein: "31g", tip: "The gold standard — lean, cheap per gram of protein.", diet: "nonveg" },
+    { food: "Soya chunks (50g dry)", protein: "26g", tip: "The highest veg protein per rupee. Boil, squeeze, add to any sabzi/pulao.", diet: "vegan" },
+    { food: "Fish (100g)", protein: "22g", tip: "Protein + omega-3 fats. Grilled beats fried for fat loss.", diet: "nonveg" },
+    { food: "Prawns (100g)", protein: "20g", tip: "Very high protein, very low calorie.", diet: "nonveg" },
+    { food: "Paneer (100g)", protein: "19g", tip: "Great, but calorie-dense — weigh portions if fat loss stalls.", diet: "veg" },
+    { food: "Chana / Rajma (1 cup)", protein: "14-15g", tip: "Also loaded with fiber — keeps you full during fat loss.", diet: "vegan" },
+    { food: "Eggs (2 boiled)", protein: "13g", tip: "The cheapest complete protein. Whole eggs are fine.", diet: "egg" },
+    { food: "Dal (1 cup cooked)", protein: "12g", tip: "Have dal at both lunch and dinner, not just one.", diet: "vegan" },
+    { food: "Greek yogurt / hung curd (100g)", protein: "10g", tip: "Great evening snack; add fruit.", diet: "veg" },
+    { food: "Tofu (100g)", protein: "8g", tip: "Cheaper than paneer per gram of protein, much lower fat.", diet: "vegan" },
+    { food: "Milk (1 glass)", protein: "8g", tip: "A glass after your workout is an easy 8g.", diet: "veg" },
+    { food: "Soy milk (1 glass)", protein: "7g", tip: "The best plant milk for protein by far.", diet: "vegan" },
+    { food: "Peanuts / Peanut butter", protein: "7g per handful", tip: "Good protein but very high calorie — measure it.", diet: "vegan" },
+    { food: "Sattu (30g)", protein: "6g", tip: "Mix in water/buttermilk for a portable protein drink.", diet: "vegan" }
   ],
   combos: "Combine dal + rice or dal + roti: together they form a complete protein (all amino acids). Indian food figured this out centuries ago."
 };

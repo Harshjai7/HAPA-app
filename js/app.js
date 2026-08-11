@@ -53,6 +53,23 @@ function toast(msg) {
   toast._t = setTimeout(() => t.classList.remove("show"), 2400);
 }
 
+/* ---- Theme (global, applies to login screen too) ---- */
+function currentTheme() { return localStorage.getItem("hapa_theme") || "dark"; }
+function applyTheme(t) {
+  localStorage.setItem("hapa_theme", t);
+  document.documentElement.setAttribute("data-theme", t);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t === "light" ? "#f4f6fa" : "#0e1117";
+}
+
+/* ---- Diet ---- */
+const DIET_ALLOWS = { vegan: ["vegan"], veg: ["vegan", "veg"], egg: ["vegan", "veg", "egg"], nonveg: ["vegan", "veg", "egg", "nonveg"] };
+function dietAllowed(f) {
+  if (f.custom) return true; // user's own foods always show
+  const d = (U && U.profile.diet) || "veg";
+  return (DIET_ALLOWS[d] || DIET_ALLOWS.veg).includes(f.diet || "veg");
+}
+
 function bmiOf(weightKg, heightCm) {
   if (!weightKg || !heightCm) return null;
   const m = heightCm / 100;
@@ -449,6 +466,54 @@ function renderUserChip() {
   chip.innerHTML = U.profile.photo
     ? `<img src="${U.profile.photo}" alt=""> <span>${esc(U.displayName)}</span>`
     : `<div class="avatar-fallback">${esc(initial)}</div> <span>${esc(U.displayName)}</span>`;
+  chip.style.cursor = "pointer";
+  chip.title = "Your profile & stats";
+  chip.onclick = openProfileModal;
+}
+
+/* ---- Profile summary popup (tap the name in the top corner) ---- */
+function openProfileModal() {
+  const p = U.profile;
+  const w = latestWeight();
+  const bmi = bmiOf(w, p.heightCm);
+  const [cat, cls] = bmiCategory(bmi);
+  const stats = weekWorkoutStats();
+  const totalWorkouts = Object.values(U.logs.workouts).filter((l) => l.completed).length;
+  const prCount = Object.keys(personalRecords()).length;
+  const streak = weeksConsistent();
+  const startW = U.logs.weights.length ? U.logs.weights[0].kg : w;
+  const goalLabels = { fatloss: "🔥 Fat loss", recomp: "💎 Slim + strong", muscle: "💪 Build muscle" };
+  const initial = (U.displayName || "?").charAt(0).toUpperCase();
+
+  const wrap = openModal(`
+    <div class="profile-head">
+      ${p.photo ? `<img class="profile-photo" src="${p.photo}" alt="">` : `<div class="profile-photo avatar-fallback" style="font-size:1.6rem">${esc(initial)}</div>`}
+      <div>
+        <h2>${esc(U.displayName)}</h2>
+        <div class="muted small">${p.age} yrs · ${p.heightCm} cm · ${esc(DIET_LABELS[p.diet || "veg"])}</div>
+        <div class="muted small">${goalLabels[p.goal] || ""}${p.targetWeightKg ? ` · target ${p.targetWeightKg} kg` : ""} · since ${U.createdAt}</div>
+      </div>
+    </div>
+    <div class="stat-grid" style="margin-top:14px">
+      <div class="stat-card"><div class="stat-num">${w || "--"}<span class="small muted"> kg</span></div><div class="stat-label">Weight ${startW && w !== startW ? `(${w < startW ? "" : "+"}${(w - startW).toFixed(1)})` : ""}</div></div>
+      <div class="stat-card"><div class="stat-num">${bmi ?? "--"}</div><div class="stat-label">BMI · <span class="pill ${cls}" style="font-size:0.62rem">${cat}</span></div></div>
+      <div class="stat-card"><div class="stat-num">${stats.done}<span class="small muted">/${stats.planned}</span></div><div class="stat-label">This week</div></div>
+      <div class="stat-card"><div class="stat-num">${totalWorkouts}</div><div class="stat-label">Total workouts</div></div>
+      <div class="stat-card"><div class="stat-num">${streak}</div><div class="stat-label">Week streak ${streak >= 3 ? "🔥" : ""}</div></div>
+      <div class="stat-card"><div class="stat-num">${prCount}</div><div class="stat-label">Personal records</div></div>
+    </div>
+    <div class="form-row" style="margin-top:14px">
+      <button class="btn secondary" id="pmTheme">${currentTheme() === "dark" ? "☀️ Light mode" : "🌙 Dark mode"}</button>
+      <button class="btn secondary" id="pmEdit">✎ Edit profile</button>
+      <button class="btn block" id="pmClose">Close</button>
+    </div>`);
+
+  wrap.querySelector("#pmClose").onclick = () => wrap.remove();
+  wrap.querySelector("#pmEdit").onclick = () => { wrap.remove(); show("settings"); };
+  wrap.querySelector("#pmTheme").onclick = () => {
+    applyTheme(currentTheme() === "dark" ? "light" : "dark");
+    wrap.querySelector("#pmTheme").textContent = currentTheme() === "dark" ? "☀️ Light mode" : "🌙 Dark mode";
+  };
 }
 
 /* ================= ONBOARDING WIZARD ================= */
@@ -458,6 +523,7 @@ const wizardState = { step: 0 };
 function startWizard() {
   wizardState.step = 0;
   wizardState.data = {
+    diet: U.profile.diet || "veg",
     age: U.profile.age || "", gender: U.profile.gender || "male",
     heightCm: U.profile.heightCm || "", weightKg: U.profile.weightKg || "",
     targetWeightKg: U.profile.targetWeightKg || "", goal: U.profile.goal || "recomp",
@@ -494,6 +560,14 @@ function renderWizardStep() {
         <div class="field"><label>Current weight (kg)</label><input id="wWeight" type="number" min="25" max="300" step="0.1" value="${esc(d.weightKg)}" placeholder="e.g. 76"></div>
       </div>
       <div class="bmi-preview" id="bmiPreview"><span class="muted">Enter height & weight to see your BMI</span></div>
+      <div class="field" style="margin-top:14px"><label>Your diet — food suggestions adapt to this</label>
+        <div class="segment" id="dietSeg">
+          <button data-diet="veg"><span class="seg-title">🥬 Pure Veg</span><span class="seg-sub">No egg</span></button>
+          <button data-diet="egg"><span class="seg-title">🥚 Veg + Egg</span><span class="seg-sub">Eggetarian</span></button>
+          <button data-diet="nonveg"><span class="seg-title">🍗 Non-Veg</span><span class="seg-sub">Everything</span></button>
+          <button data-diet="vegan"><span class="seg-title">🌱 Vegan</span><span class="seg-sub">Plant only</span></button>
+        </div>
+      </div>
       <div class="error-msg" id="wErr"></div>
       <button class="btn block" id="wNext">Next →</button>`;
     const upd = () => {
@@ -504,6 +578,10 @@ function renderWizardStep() {
         : `<span class="muted">Enter height & weight to see your BMI</span>`;
     };
     $("#wHeight").oninput = upd; $("#wWeight").oninput = upd; upd();
+    if (!d.diet) d.diet = "veg";
+    const syncDiet = () => $$("#dietSeg button").forEach((b) => b.classList.toggle("selected", b.dataset.diet === d.diet));
+    $("#dietSeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { d.diet = b.dataset.diet; syncDiet(); } };
+    syncDiet();
     $("#wNext").onclick = () => {
       d.age = +$("#wAge").value; d.gender = $("#wGender").value;
       d.heightCm = +$("#wHeight").value; d.weightKg = +$("#wWeight").value;
@@ -643,7 +721,8 @@ function renderWizardStep() {
       // Save everything
       U.profile = {
         age: d.age, gender: d.gender, heightCm: d.heightCm, weightKg: d.weightKg,
-        targetWeightKg: d.targetWeightKg, goal: d.goal, photo: d.photo, notes: d.notes
+        targetWeightKg: d.targetWeightKg, goal: d.goal, photo: d.photo, notes: d.notes,
+        diet: d.diet || "veg"
       };
       U.schedule = { daysPerWeek: d.daysPerWeek, selectedDays: d.selectedDays, time: d.time, foodTiming: d.foodTiming };
       U.settings.calorieTracker = d.calorieTracker;
@@ -1193,7 +1272,7 @@ function foodById(id) {
 function allFoods() {
   const cf = customFoods();
   const overridden = new Set(cf.map((f) => f.overrideOf).filter(Boolean));
-  return [...cf, ...FOODS.filter((f) => !overridden.has(f.id))];
+  return [...cf, ...FOODS.filter((f) => !overridden.has(f.id))].filter(dietAllowed);
 }
 
 /* Create/edit food modal. `existing` = food object being edited (or null). */
@@ -1314,6 +1393,45 @@ function renderFood() {
       </div>
     </div>
 
+    ${(() => {
+      // Weekly report: last 7 days that have food logs
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const dd = new Date(); dd.setDate(dd.getDate() - i);
+        const key = todayISO(dd);
+        const arr = U.logs.food[key];
+        if (!arr || !arr.length) continue;
+        const t = arr.reduce((a, it) => {
+          const f = foodById(it.foodId);
+          a.k += f.kcal * it.qty; a.p += f.protein * it.qty; return a;
+        }, { k: 0, p: 0 });
+        days.push({ key, ...t });
+      }
+      if (days.length < 2 || !targets) return "";
+      const avgK = Math.round(days.reduce((s, d) => s + d.k, 0) / days.length);
+      const avgP = Math.round(days.reduce((s, d) => s + d.p, 0) / days.length);
+      const diff = avgK - targets.kcal;
+      const verdict = Math.abs(diff) <= 100
+        ? `✅ Right on target — this is exactly how fat loss happens.`
+        : diff > 0
+          ? `⚠️ ~${diff} kcal/day over target. That's ~${Math.round(diff * 7 / 7700 * 10) / 10} kg/week of progress lost — tighten portions.`
+          : `✅ ~${-diff} kcal/day under target — on pace for ~${Math.round(-diff * 7 / 7700 * 10) / 10} kg/week of fat loss.`;
+      return `<div class="card">
+        <h3>📊 This week (${days.length} day${days.length > 1 ? "s" : ""} logged)</h3>
+        <div class="stat-grid" style="margin-top:8px">
+          <div class="stat-card"><div class="stat-num">${avgK}</div><div class="stat-label">avg kcal / ${targets.kcal}</div></div>
+          <div class="stat-card"><div class="stat-num accent">${avgP}g</div><div class="stat-label">avg protein / ${targets.protein}g</div></div>
+        </div>
+        ${days.map((d) => `
+          <div class="week-report-row">
+            <span class="wr-date">${d.key.slice(5)}</span>
+            <div class="wr-bar"><div class="wr-fill ${d.k > targets.kcal * 1.05 ? "over" : ""}" style="width:${Math.min(100, (d.k / targets.kcal) * 100)}%"></div></div>
+            <span class="wr-kcal">${Math.round(d.k)}</span>
+          </div>`).join("")}
+        <p class="muted small" style="margin-top:8px">${verdict}</p>
+      </div>`;
+    })()}
+
     <div class="card">
       <h3>Logged today</h3>
       <div id="foodLogList">
@@ -1424,6 +1542,58 @@ function renderProgress() {
           </figure>`).join("")}
       </div>
     </div>
+
+    ${(() => {
+      // Nerd stats: weekly training volume (sum of weight × reps, done sets)
+      const weekKey = (iso) => { const dt = new Date(iso + "T12:00:00"); dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); return todayISO(dt); };
+      const volByWeek = {}, groupVol = {};
+      const thisWeek = weekKey(todayISO());
+      Object.entries(U.logs.workouts).forEach(([date, l]) => {
+        if (!l.sets) return;
+        const wk = weekKey(date);
+        Object.entries(l.sets).forEach(([exId, sets]) => {
+          sets.forEach((s) => {
+            if (!s.done || !(+s.w > 0) || !(+s.r > 0)) return;
+            const v = +s.w * +s.r;
+            volByWeek[wk] = (volByWeek[wk] || 0) + v;
+            if (wk === thisWeek) {
+              const e = getEx(exId);
+              const g = e ? muscleGroup(e) : "Other";
+              groupVol[g] = (groupVol[g] || 0) + v;
+            }
+          });
+        });
+      });
+      const weeks = [];
+      for (let i = 7; i >= 0; i--) {
+        const d = new Date(thisWeek + "T12:00:00"); d.setDate(d.getDate() - i * 7);
+        const k = todayISO(d);
+        weeks.push({ k, v: volByWeek[k] || 0 });
+      }
+      if (!weeks.some((w) => w.v > 0)) return "";
+      const maxV = Math.max(...weeks.map((w) => w.v));
+      const fmtV = (v) => v >= 1000 ? (v / 1000).toFixed(1) + "k" : Math.round(v);
+      const groups = Object.entries(groupVol).sort((a, b) => b[1] - a[1]);
+      const maxG = groups.length ? groups[0][1] : 0;
+      return `<div class="card">
+        <h3>📊 Training volume <span class="muted small">(kg × reps lifted)</span></h3>
+        ${weeks.map((w) => `
+          <div class="week-report-row">
+            <span class="wr-date">${w.k === thisWeek ? "now" : w.k.slice(5)}</span>
+            <div class="wr-bar"><div class="wr-fill" style="width:${maxV ? (w.v / maxV) * 100 : 0}%"></div></div>
+            <span class="wr-kcal">${fmtV(w.v)}</span>
+          </div>`).join("")}
+        ${groups.length ? `
+        <h3 style="margin-top:14px">This week by muscle</h3>
+        ${groups.map(([g, v]) => `
+          <div class="week-report-row">
+            <span class="wr-date">${g}</span>
+            <div class="wr-bar"><div class="wr-fill blue" style="width:${maxG ? (v / maxG) * 100 : 0}%"></div></div>
+            <span class="wr-kcal">${fmtV(v)}</span>
+          </div>`).join("")}
+        <p class="muted small" style="margin-top:6px">Rising volume over weeks = you're progressing. A muscle group far behind the rest = something to balance.</p>` : ""}
+      </div>`;
+    })()}
 
     <div class="card">
       <h3>🏆 Personal records</h3>
@@ -1565,13 +1735,15 @@ function renderGuide() {
     </div>
 
     <div class="card">
-      <h3>🌱 Pure-veg protein guide (no egg)</h3>
+      <h3>Protein guide — ${esc(DIET_LABELS[U.profile.diet || "veg"])}</h3>
       <p class="muted small">${esc(PROTEIN_GUIDE.target)}${targets ? ` For you right now that's about <strong class="accent">${targets.protein} g/day</strong>.` : ""}</p>
-      <p class="muted small" style="margin:8px 0">${esc(PROTEIN_GUIDE.note)}</p>
+      <p class="muted small" style="margin:8px 0">${esc(DIET_NOTES[U.profile.diet || "veg"])}</p>
       <div style="overflow-x:auto">
       <table class="protein-table">
         <tr><th>Food</th><th>Protein</th><th>Tip</th></tr>
-        ${PROTEIN_GUIDE.best.map((b) => `<tr><td>${esc(b.food)}</td><td>${esc(b.protein)}</td><td class="muted small">${esc(b.tip)}</td></tr>`).join("")}
+        ${PROTEIN_GUIDE.best
+          .filter((b) => (DIET_ALLOWS[U.profile.diet || "veg"] || []).includes(b.diet))
+          .map((b) => `<tr><td>${esc(b.food)}</td><td>${esc(b.protein)}</td><td class="muted small">${esc(b.tip)}</td></tr>`).join("")}
       </table>
       </div>
       <div class="mistake-box" style="margin-top:12px">💡 ${esc(PROTEIN_GUIDE.combos)}</div>
@@ -1619,6 +1791,20 @@ function renderSettings() {
           <option value="recomp" ${p.goal === "recomp" ? "selected" : ""}>💎 Slim + strong (aesthetic)</option>
           <option value="muscle" ${p.goal === "muscle" ? "selected" : ""}>💪 Build muscle</option>
         </select></div>
+      <div class="form-row">
+        <div class="field"><label>Diet</label>
+          <select id="sDiet">
+            <option value="veg" ${(p.diet || "veg") === "veg" ? "selected" : ""}>🥬 Pure Veg (no egg)</option>
+            <option value="egg" ${p.diet === "egg" ? "selected" : ""}>🥚 Veg + Egg</option>
+            <option value="nonveg" ${p.diet === "nonveg" ? "selected" : ""}>🍗 Non-Veg</option>
+            <option value="vegan" ${p.diet === "vegan" ? "selected" : ""}>🌱 Vegan</option>
+          </select></div>
+        <div class="field"><label>Theme</label>
+          <select id="sTheme">
+            <option value="dark" ${currentTheme() === "dark" ? "selected" : ""}>🌙 Dark</option>
+            <option value="light" ${currentTheme() === "light" ? "selected" : ""}>☀️ Light</option>
+          </select></div>
+      </div>
       <div class="field"><label>Notes</label><textarea id="sNotes">${esc(p.notes || "")}</textarea></div>
     </div>
 
@@ -1713,6 +1899,8 @@ function renderSettings() {
     p.heightCm = +$("#sHeight").value || p.heightCm;
     p.targetWeightKg = +$("#sTarget").value || null;
     p.goal = $("#sGoal").value;
+    p.diet = $("#sDiet").value;
+    applyTheme($("#sTheme").value);
     p.notes = $("#sNotes").value.trim();
     U.schedule = { daysPerWeek: dpw, selectedDays: days, time: $("#sTime").value || "18:00", foodTiming: $("#sFood").value };
     U.settings.calorieTracker = $("#sCal").value === "on";
@@ -1752,6 +1940,7 @@ function renderSettings() {
     };
     reader.readAsText(f);
   };
+  $("#sTheme").onchange = (e) => applyTheme(e.target.value); // instant preview
   $("#addExerciseBtn").onclick = () => openExerciseModal(null, renderSettings);
   host.querySelectorAll("[data-cxedit]").forEach((b) => b.onclick = () => openExerciseModal(b.dataset.cxedit, renderSettings));
   host.querySelectorAll("[data-cxdel]").forEach((b) => b.onclick = () => {
@@ -1775,6 +1964,7 @@ function renderSettings() {
 /* ================= BOOT ================= */
 
 document.addEventListener("DOMContentLoaded", () => {
+  applyTheme(currentTheme());
   initAuth();
   $$(".bottom-nav button").forEach((b) => b.onclick = () => show(b.dataset.view));
   $("#timerSkip").onclick = stopRestTimer;
