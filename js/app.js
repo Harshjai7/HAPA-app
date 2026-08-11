@@ -1539,7 +1539,7 @@ function renderFood() {
 
     <div class="card">
       <div class="food-add-head">
-        <h3>Add food (pure veg)</h3>
+        <h3>Add food — ${esc(DIET_LABELS[U.profile.diet || "veg"])}</h3>
         <button class="btn small-btn" id="newFoodBtn">➕ New food</button>
       </div>
       <input class="search-box" id="foodSearch" placeholder="Search: dal, paneer, roti, soya...">
@@ -2065,6 +2065,11 @@ function renderSettings() {
     reader.readAsText(f);
   };
   $("#sTheme").onchange = (e) => applyTheme(e.target.value); // instant preview
+  $("#sDiet").onchange = (e) => { // diet applies instantly too — no Save needed
+    p.diet = e.target.value;
+    persist();
+    toast(`Diet set: ${DIET_LABELS[p.diet]} — food lists updated`);
+  };
   $("#addExerciseBtn").onclick = () => openExerciseModal(null, renderSettings);
   host.querySelectorAll("[data-cxedit]").forEach((b) => b.onclick = () => openExerciseModal(b.dataset.cxedit, renderSettings));
   host.querySelectorAll("[data-cxdel]").forEach((b) => b.onclick = () => {
