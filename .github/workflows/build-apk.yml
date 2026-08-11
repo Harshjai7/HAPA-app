@@ -1,0 +1,76 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "css/**"
+      - "js/**"
+      - "icons/**"
+      - "manifest.webmanifest"
+      - "sw.js"
+      - ".github/workflows/build-apk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Prepare web assets
+        run: |
+          mkdir -p www
+          cp -r index.html css js icons manifest.webmanifest sw.js www/
+
+      - name: Create Capacitor Android project
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.harshjai7.hapa",
+            "appName": "HAPA",
+            "webDir": "www"
+          }
+          EOF
+          npx cap add android
+
+      - name: Use HAPA launcher icon
+        run: |
+          find android/app/src/main/res -name "ic_launcher*.png" -exec cp icons/icon-maskable-512.png {} \;
+
+      - name: Build debug APK
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Collect APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk HAPA.apk
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAPA-apk
+          path: HAPA.apk
+
+      - name: Publish to Releases (android-latest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create android-latest \
+            --title "HAPA — Android APK" \
+            --notes "Latest Android build of HAPA. **To install:** download HAPA.apk on your phone, open it, and allow installing from this source when Android asks. Updates: re-download from this page after each new build." \
+            2>/dev/null || true
+          gh release upload android-latest HAPA.apk --clobber

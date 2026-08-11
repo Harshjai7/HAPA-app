@@ -123,9 +123,10 @@ function videoBlock(ex) {
   }
   const watchUrl = `https://www.youtube.com/watch?v=${esc(ex.videoId)}`;
   // YouTube refuses inline embeds when the page is opened from disk (file://,
-  // no valid referer -> player error 153). In that case show the video
+  // no valid referer -> player error 153) and inside the Android app shell
+  // (Capacitor serves from localhost). In those cases show the video
   // thumbnail as a click-through to YouTube instead.
-  if (location.protocol === "file:") {
+  if (location.protocol === "file:" || location.protocol === "capacitor:" || location.hostname === "localhost") {
     return `
       <div class="video-wrap">
         <a class="video-thumb" href="${watchUrl}" target="_blank" rel="noopener" title="Watch: ${esc(ex.name)} tutorial">
