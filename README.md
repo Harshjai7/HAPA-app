@@ -4,9 +4,20 @@ A fully offline personal gym trainer built with **plain HTML, CSS, and JavaScrip
 
 Built for: beginner lifter, pure veg (no egg, no supplements), goal = lose belly fat + build a slim, strong, aesthetic body.
 
+**▶ Live app: https://harshjai7.github.io/HAPA-app/**
+
 ## How to run
 
-Just double-click **`index.html`** — it opens in your browser and works immediately. Internet is only needed to watch the exercise videos; everything else works offline.
+- **Online (recommended):** open https://harshjai7.github.io/HAPA-app/ — works on phone and PC, and keeps working offline after the first visit (it's a PWA).
+- **Local:** double-click **`index.html`** — works immediately, no internet needed (except for videos).
+
+> ⚠️ Your data is saved **per browser per address** — the online app and the local file have separate storage. Pick one way of opening the app and stick with it (use Settings → Export/Import backup to move data).
+
+## Install as an app on your phone 📱
+
+- **Android (Chrome):** open the live URL → tap the ⋮ menu → **"Install app"** (or "Add to Home screen"). HAPA installs like a real app: own icon, fullscreen, works offline.
+- **iPhone (Safari):** open the live URL → tap **Share** → **"Add to Home Screen"**. Same result: icon on your home screen, runs fullscreen, works offline.
+- **Real Play Store APK (optional):** go to https://www.pwabuilder.com, paste the live URL, and it generates a signed Android package from this PWA. (A true iOS App Store app requires a Mac + Apple developer account — the Add to Home Screen route above is the practical iPhone option.)
 
 ## Features
 
