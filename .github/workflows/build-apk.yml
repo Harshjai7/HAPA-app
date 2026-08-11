@@ -49,6 +49,20 @@ jobs:
           EOF
           npx cap add android
 
+      - name: Fix Kotlin stdlib duplicate classes
+        run: |
+          cat >> android/build.gradle <<'EOF'
+
+          allprojects {
+              configurations.all {
+                  resolutionStrategy {
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+                  }
+              }
+          }
+          EOF
+
       - name: Use HAPA launcher icon
         run: |
           find android/app/src/main/res -name "ic_launcher*.png" -exec cp icons/icon-maskable-512.png {} \;
