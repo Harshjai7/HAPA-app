@@ -1284,7 +1284,9 @@ function renderSettings() {
         <button class="btn secondary" id="logoutBtn">Log out</button>
         <button class="btn danger" id="resetBtn">Delete my account & data</button>
       </div>
-    </div>`;
+    </div>
+
+    <p class="app-credit">HAPA — Created by <strong>Harsh</strong> 💪</p>`;
 
   // schedule editing state
   let dpw = sc.daysPerWeek;
