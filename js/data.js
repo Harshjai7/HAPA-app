@@ -491,6 +491,125 @@ const EXERCISES = {
     ],
     mistake: "Pulling with arms first — rowing is 60% legs.",
     videoId: "4zWu1yuJ0_g", search: "rowing machine proper technique beginner"
+  },
+
+  /* ------------- HOME / BODYWEIGHT ------------- */
+  "inverted-row": {
+    name: "Inverted Row (table/bar)", muscle: "Back", equipment: "Bodyweight",
+    needsWeight: false, sets: 3, reps: "8-12", restSec: 90, level: "Beginner",
+    startWeight: "Use a sturdy table or a low bar. The more horizontal your body, the harder it is.",
+    steps: [
+      "Lie under a sturdy table/bar, grab the edge with both hands.",
+      "Keep your body in one straight line, heels on the floor.",
+      "Pull your chest up to the edge, squeezing your shoulder blades.",
+      "Lower slowly. Bend knees to make it easier."
+    ],
+    mistake: "Hips sagging — squeeze glutes and stay rigid like a plank.",
+    videoId: null, search: "inverted row under table proper form"
+  },
+  "superman": {
+    name: "Superman Hold", muscle: "Lower back / Back", equipment: "Bodyweight",
+    needsWeight: false, sets: 3, reps: "12-15 (or 20-30 sec hold)", restSec: 45, level: "Beginner",
+    startWeight: "Small controlled lifts beat big jerky ones.",
+    steps: [
+      "Lie face-down, arms extended forward.",
+      "Lift arms, chest and legs off the floor together.",
+      "Squeeze your lower back and glutes for 2 seconds at the top.",
+      "Lower slowly and repeat."
+    ],
+    mistake: "Yanking the neck up — keep looking at the floor.",
+    videoId: null, search: "superman exercise proper form"
+  },
+  "chinup": {
+    name: "Chin-Up", muscle: "Biceps / Back", equipment: "Pull-up bar",
+    needsWeight: false, sets: 3, reps: "As many clean reps as possible", restSec: 120, level: "Beginner",
+    startWeight: "Palms facing YOU. Can't do one yet? Jump up and lower yourself slowly (5 seconds down).",
+    steps: [
+      "Grab the bar with palms facing you, hands shoulder-width.",
+      "Pull your chin above the bar, elbows driving down.",
+      "Lower slowly to a full hang.",
+      "No swinging — dead stop between reps."
+    ],
+    mistake: "Half reps at the top — chin must clear the bar.",
+    videoId: null, search: "chin up proper form beginner"
+  },
+  "pike-pushup": {
+    name: "Pike Push-Up", muscle: "Shoulders", equipment: "Bodyweight",
+    needsWeight: false, sets: 3, reps: "8-12", restSec: 90, level: "Beginner",
+    startWeight: "The bodyweight shoulder press. Feet on a chair makes it harder.",
+    steps: [
+      "Start in a push-up position, then walk feet in and lift hips high (like a mountain).",
+      "Bend elbows and lower the TOP of your head toward the floor.",
+      "Press back up until arms are straight.",
+      "Keep hips high the whole time — this targets shoulders, not chest."
+    ],
+    mistake: "Letting hips drop — that turns it into a normal push-up.",
+    videoId: null, search: "pike push up proper form"
+  },
+  "chair-dip": {
+    name: "Chair Dip", muscle: "Triceps", equipment: "Bodyweight",
+    needsWeight: false, sets: 3, reps: "10-15", restSec: 60, level: "Beginner",
+    startWeight: "Use a sturdy chair or bed edge. Straighter legs = harder.",
+    steps: [
+      "Hands on the chair edge behind you, legs out in front.",
+      "Lower your body until elbows reach ~90°.",
+      "Press back up through your palms.",
+      "Keep your back close to the chair the whole time."
+    ],
+    mistake: "Shoulders shrugging up to the ears — keep them down.",
+    videoId: null, search: "chair dips proper form triceps"
+  },
+  "step-up": {
+    name: "Step-Up", muscle: "Quads / Glutes", equipment: "Bodyweight / Dumbbell",
+    needsWeight: false, sets: 3, reps: "10 each leg", restSec: 90, level: "Beginner",
+    startWeight: "Use stairs or a sturdy chair. Hold water bottles or dumbbells to make it harder.",
+    steps: [
+      "Place your whole foot on the step/chair.",
+      "Drive through that heel to stand up on it — don't push off the bottom leg.",
+      "Lower back down slowly with control.",
+      "All reps one side, then switch."
+    ],
+    mistake: "Bouncing off the back leg — the top leg should do all the work.",
+    videoId: null, search: "step up exercise proper form"
+  },
+  "wall-sit": {
+    name: "Wall Sit", muscle: "Quads", equipment: "Bodyweight",
+    needsWeight: false, sets: 3, reps: "30-45 sec hold", restSec: 60, level: "Beginner",
+    startWeight: "Thighs parallel to the floor is the goal — higher is easier.",
+    steps: [
+      "Back flat against a wall, slide down until knees are at ~90°.",
+      "Knees directly above ankles, whole back touching the wall.",
+      "Hold. Breathe normally.",
+      "Stand up when your form starts to break."
+    ],
+    mistake: "Hands on thighs — that's cheating; keep them at your sides.",
+    videoId: null, search: "wall sit proper form"
+  },
+  "jumping-jacks": {
+    name: "Jumping Jacks", muscle: "Cardio", equipment: "Bodyweight",
+    needsWeight: false, sets: 1, reps: "3 rounds of 1 min (rest 30s between)", restSec: 30, level: "Beginner",
+    startWeight: "Simple, free, and gets the heart rate up fast.",
+    steps: [
+      "Jump feet out wide while raising arms overhead.",
+      "Jump back to standing with arms at your sides.",
+      "Land softly on the balls of your feet.",
+      "Keep a steady rhythm you can hold for the full minute."
+    ],
+    mistake: "Landing flat-footed and heavy — stay springy.",
+    videoId: null, search: "jumping jacks proper form"
+  },
+  "skipping": {
+    name: "Skipping Rope", muscle: "Cardio", equipment: "Bodyweight / Rope",
+    needsWeight: false, sets: 1, reps: "5-10 min (break into rounds)", restSec: 0, level: "Beginner",
+    startWeight: "One of the best calorie burners per minute that exists.",
+    steps: [
+      "Elbows close to your body — the wrists spin the rope, not the arms.",
+      "Jump just 2-3 cm off the floor, land softly on the balls of your feet.",
+      "Trip on the rope? Just reset and continue — everyone does.",
+      "No rope? 'Invisible rope' skipping works almost as well."
+    ],
+    mistake: "Jumping too high — small quick hops save energy and your knees.",
+    videoId: null, search: "jump rope basics beginner"
   }
 };
 

@@ -148,6 +148,33 @@ function dayExercises(day) {
   return (U.customPlan && U.customPlan[day.id]) || day.exercises;
 }
 
+/* ---- Training place & equipment availability ---- */
+const EQUIPMENT_OPTIONS = [
+  { id: "dumbbell", label: "Dumbbells" },
+  { id: "barbell", label: "Barbell" },
+  { id: "bench", label: "Bench" },
+  { id: "pullupbar", label: "Pull-up bar" }
+];
+const NEEDS_BENCH = new Set(["incline-db-press", "flat-db-press"]);
+const PLACE_LABELS = { gym: "🏋️ Gym", "home-equip": "🏠 Home + equipment", "home-none": "🤸 Home (bodyweight)" };
+
+function exAvailable(ex, exId) {
+  if (!ex) return false;
+  if (ex.custom) return true; // the user added it for their own setup
+  const place = (U && U.profile.trainingPlace) || "gym";
+  if (place === "gym") return true;
+  const e = (ex.equipment || "").toLowerCase();
+  if (e.includes("bodyweight")) return true;
+  if (/(machine|cable|treadmill|bike|rower)/.test(e)) return false;
+  if (place === "home-none") return false;
+  const have = new Set(U.profile.equipment || []);
+  if (NEEDS_BENCH.has(exId) && !have.has("bench")) return false;
+  if (e.includes("pull-up bar")) return have.has("pullupbar");
+  if (e.includes("dumbbell")) return have.has("dumbbell");
+  if (e.includes("barbell")) return have.has("barbell");
+  return true;
+}
+
 const MUSCLE_GROUPS = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Legs", "Core", "Cardio"];
 function muscleGroup(ex) {
   const primary = (ex.muscle || "").split("/")[0].toLowerCase();
@@ -524,6 +551,8 @@ function startWizard() {
   wizardState.step = 0;
   wizardState.data = {
     diet: U.profile.diet || "veg",
+    trainingPlace: U.profile.trainingPlace || "gym",
+    equipment: U.profile.equipment && U.profile.equipment.length ? [...U.profile.equipment] : ["dumbbell"],
     age: U.profile.age || "", gender: U.profile.gender || "male",
     heightCm: U.profile.heightCm || "", weightKg: U.profile.weightKg || "",
     targetWeightKg: U.profile.targetWeightKg || "", goal: U.profile.goal || "recomp",
@@ -651,7 +680,20 @@ function renderWizardStep() {
     host.innerHTML = `
       <h2>Your week</h2>
       <p class="muted">Pick how many days you'll train and which days. The app builds the right split automatically.</p>
-      <div class="field" style="margin-top:14px"><label>Days per week</label>
+      <div class="field" style="margin-top:14px"><label>Where will you train?</label>
+        <div class="segment" id="placeSeg">
+          <button data-place="gym"><span class="seg-title">🏋️ Gym</span><span class="seg-sub">Full equipment</span></button>
+          <button data-place="home-equip"><span class="seg-title">🏠 Home</span><span class="seg-sub">Some equipment</span></button>
+          <button data-place="home-none"><span class="seg-title">🤸 Home</span><span class="seg-sub">No equipment</span></button>
+        </div>
+      </div>
+      <div class="field hidden" id="equipField"><label>What equipment do you have? (select all that apply)</label>
+        <div class="segment" id="equipSeg">
+          ${EQUIPMENT_OPTIONS.map((eq) => `<button data-eq="${eq.id}">${eq.label}</button>`).join("")}
+        </div>
+        <div class="hint">Exercises the app suggests will only use what you have.</div>
+      </div>
+      <div class="field"><label>Days per week</label>
         <div class="segment" id="dpwSeg">
           ${[3, 4, 5, 6].map((n) => `<button data-n="${n}"><span class="seg-title">${n} days</span><span class="seg-sub">${PLAN_TEMPLATES[n].label.replace(/^\d-Day /, "")}</span></button>`).join("")}
         </div>
@@ -683,6 +725,21 @@ function renderWizardStep() {
         <button class="btn block" id="wFinish">Finish ✔</button>
       </div>`;
 
+    if (!d.trainingPlace) d.trainingPlace = "gym";
+    if (!d.equipment) d.equipment = ["dumbbell"];
+    const syncPlace = () => {
+      $$("#placeSeg button").forEach((b) => b.classList.toggle("selected", b.dataset.place === d.trainingPlace));
+      $("#equipField").classList.toggle("hidden", d.trainingPlace !== "home-equip");
+      $$("#equipSeg button").forEach((b) => b.classList.toggle("selected", d.equipment.includes(b.dataset.eq)));
+    };
+    $("#placeSeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { d.trainingPlace = b.dataset.place; syncPlace(); } };
+    $("#equipSeg").onclick = (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      const eq = b.dataset.eq;
+      d.equipment = d.equipment.includes(eq) ? d.equipment.filter((x) => x !== eq) : [...d.equipment, eq];
+      syncPlace();
+    };
+    syncPlace();
     const syncDpw = () => $$("#dpwSeg button").forEach((b) => b.classList.toggle("selected", +b.dataset.n === d.daysPerWeek));
     const syncDays = () => {
       $$("#dayPicker button").forEach((b) => b.classList.toggle("selected", d.selectedDays.includes(+b.dataset.wd)));
@@ -722,7 +779,9 @@ function renderWizardStep() {
       U.profile = {
         age: d.age, gender: d.gender, heightCm: d.heightCm, weightKg: d.weightKg,
         targetWeightKg: d.targetWeightKg, goal: d.goal, photo: d.photo, notes: d.notes,
-        diet: d.diet || "veg"
+        diet: d.diet || "veg",
+        trainingPlace: d.trainingPlace || "gym",
+        equipment: d.trainingPlace === "home-equip" ? d.equipment : []
       };
       U.schedule = { daysPerWeek: d.daysPerWeek, selectedDays: d.selectedDays, time: d.time, foodTiming: d.foodTiming };
       U.settings.calorieTracker = d.calorieTracker;
@@ -899,8 +958,29 @@ function renderWorkout(templateDayId = null) {
       <ul class="checklist">${WARMUP.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>
     </div>`;
 
-  const exList = dayExercises(day).map((id) => log.swaps[id] || id);
-  exList.forEach((exId) => {
+  // Resolve exercises: apply today's swaps, then auto-substitute anything
+  // the user's training place / equipment can't do.
+  const planned = dayExercises(day).map((id) => log.swaps[id] || id);
+  const used = new Set(planned.filter((id) => exAvailable(getEx(id), id)));
+  const resolved = [], skipped = [];
+  planned.forEach((id) => {
+    const ex = getEx(id);
+    if (!ex) return;
+    if (exAvailable(ex, id)) { resolved.push({ id }); return; }
+    const g = muscleGroup(ex);
+    const alt = allExerciseIds().find((aid) => {
+      const ae = getEx(aid);
+      return ae && aid !== id && !used.has(aid) && muscleGroup(ae) === g && ae.muscle && !(ae.muscle || "").includes("Cardio") && exAvailable(ae, aid);
+    });
+    if (alt) { used.add(alt); resolved.push({ id: alt, insteadOf: ex.name }); }
+    else skipped.push(ex.name);
+  });
+
+  if (skipped.length) {
+    html += `<div class="card"><p class="muted small">⚠️ Skipped (no equipment for it at ${esc(PLACE_LABELS[U.profile.trainingPlace || "gym"])}): ${skipped.map(esc).join(", ")}. Change your training place in Settings if this is wrong.</p></div>`;
+  }
+
+  resolved.forEach(({ id: exId, insteadOf }) => {
     const ex = getEx(exId);
     if (!ex) return;
     const lastW = U.logs.lastWeights[exId];
@@ -914,7 +994,7 @@ function renderWorkout(templateDayId = null) {
     <div class="card exercise-card" data-ex="${exId}">
       <div class="ex-head">
         <div>
-          <div class="ex-title">${esc(ex.name)} ${isSwapped ? '<span class="pill blue">swapped</span>' : ""}</div>
+          <div class="ex-title">${esc(ex.name)} ${isSwapped ? '<span class="pill blue">swapped</span>' : ""}${insteadOf ? ` <span class="pill blue">🏠 instead of ${esc(insteadOf)}</span>` : ""}</div>
           <div class="ex-meta">${esc(ex.muscle)} · ${esc(ex.equipment)} · ${ex.sets} sets × ${esc(ex.reps)}</div>
           ${sug ? `<div class="overload-hint">📈 Last (${sug.date.slice(5)}): ${esc(sug.summary)} — <strong>${esc(sug.advice)}</strong></div>` : (lastW ? `<div class="overload-hint">📈 Last weight: ${lastW} kg</div>` : "")}
         </div>
@@ -945,14 +1025,18 @@ function renderWorkout(templateDayId = null) {
   });
 
   if (isFatLoss) {
+    const cardioOpts = allExerciseIds().filter((id) => {
+      const e = getEx(id);
+      return e && muscleGroup(e) === "Cardio" && exAvailable(e, id);
+    });
     html += `
     <div class="card exercise-card cardio-card">
       <div class="ex-title">🏃 ${esc(CARDIO_FINISHER.title)}</div>
       <p class="muted small" style="margin-top:6px">${esc(CARDIO_FINISHER.note)}</p>
-      <div class="segment" style="margin-top:10px">
-        ${CARDIO_FINISHER.options.map((id) => `<button class="cardio-opt" data-c="${id}">${esc(EXERCISES[id].name)}</button>`).join("")}
+      ${cardioOpts.length ? `<div class="segment" style="margin-top:10px">
+        ${cardioOpts.map((id) => `<button class="cardio-opt" data-c="${id}">${esc(getEx(id).name)}</button>`).join("")}
       </div>
-      <div id="cardioDetail"></div>
+      <div id="cardioDetail"></div>` : `<p class="muted small">No cardio equipment set up — a 15-minute brisk outdoor walk does the same job.</p>`}
     </div>`;
   }
 
@@ -1004,7 +1088,7 @@ function renderWorkout(templateDayId = null) {
 
   host.querySelectorAll(".cardio-opt").forEach((b) => b.onclick = () => {
     host.querySelectorAll(".cardio-opt").forEach((x) => x.classList.toggle("selected", x === b));
-    const ex = EXERCISES[b.dataset.c];
+    const ex = getEx(b.dataset.c);
     $("#cardioDetail").innerHTML = `
       <div class="ex-detail">
         <p class="muted small"><strong>${esc(ex.reps)}</strong> — ${esc(ex.startWeight)}</p>
@@ -1031,7 +1115,7 @@ function openSwapModal(day, log, exId) {
   const inUse = new Set(dayExercises(day).map((id) => log.swaps[id] || id));
   const options = allExerciseIds().filter((id) => {
     const e = getEx(id);
-    return e && id !== exId && !inUse.has(id) && muscleGroup(e) === group;
+    return e && id !== exId && !inUse.has(id) && muscleGroup(e) === group && exAvailable(e, id);
   });
 
   const wrap = openModal(`
@@ -1072,7 +1156,7 @@ function openPlanEditor(day) {
     const grouped = {};
     allExerciseIds().forEach((id) => {
       const e = getEx(id);
-      if (!e || list.includes(id)) return;
+      if (!e || list.includes(id) || !exAvailable(e, id)) return;
       const g = muscleGroup(e);
       (grouped[g] = grouped[g] || []).push(`<option value="${id}">${esc(e.name)} (${e.sets}×${esc(e.reps)})</option>`);
     });
@@ -1275,6 +1359,8 @@ function allFoods() {
   return [...cf, ...FOODS.filter((f) => !overridden.has(f.id))].filter(dietAllowed);
 }
 
+let lastFoodQuery = ""; // keeps your search alive while you add foods
+
 /* Create/edit food modal. `existing` = food object being edited (or null). */
 function openFoodModal(existing, onSaved) {
   const isBuiltin = existing && !existing.custom;
@@ -1463,10 +1549,19 @@ function renderFood() {
 
   $("#newFoodBtn").onclick = () => openFoodModal(null, renderFood);
 
+  const addFood = (id) => {
+    if (!U.logs.food[dateKey]) U.logs.food[dateKey] = [];
+    const ex = U.logs.food[dateKey].find((x) => x.foodId === id);
+    if (ex) ex.qty += 1; else U.logs.food[dateKey].push({ foodId: id, qty: 1 });
+    persist();
+    toast(`Added: ${foodById(id).name} ✔`);
+    renderFood(); // lastFoodQuery keeps the search results in place
+  };
+
   const renderResults = (q) => {
     const list = allFoods().filter((f) => f.name.toLowerCase().includes(q.toLowerCase())).slice(0, 12);
     $("#foodResults").innerHTML = list.map((f) => `
-      <div class="food-row">
+      <div class="food-row food-pick" data-fid="${f.id}" title="Tap to add">
         <div>
           <div class="fr-name">${esc(f.name)} ${f.custom ? `<span class="pill" style="font-size:0.62rem">${f.overrideOf ? "edited" : "custom"}</span>` : ""}</div>
           <div class="fr-sub">${esc(f.serving)} · P ${f.protein}g C ${f.carbs}g F ${f.fat}g</div>
@@ -1475,15 +1570,15 @@ function renderFood() {
           <span class="fr-kcal">${f.kcal} kcal</span>
           <button data-edit="${f.id}" title="Edit this food">✎</button>
           ${f.custom ? `<button data-delfood="${f.id}" title="Delete this food">🗑</button>` : ""}
-          <button data-add="${f.id}">＋ Add</button>
+          <button data-add="${f.id}">＋</button>
         </div>
       </div>`).join("") || `<p class="muted small">No match — tap ➕ New food to create it.</p>`;
-    $("#foodResults").querySelectorAll("[data-add]").forEach((b) => b.onclick = () => {
-      if (!U.logs.food[dateKey]) U.logs.food[dateKey] = [];
-      const ex = U.logs.food[dateKey].find((x) => x.foodId === b.dataset.add);
-      if (ex) ex.qty += 1; else U.logs.food[dateKey].push({ foodId: b.dataset.add, qty: 1 });
-      persist(); renderFood();
+    // Tap anywhere on a food row to add it (buttons keep their own actions)
+    $("#foodResults").querySelectorAll(".food-pick").forEach((row) => row.onclick = (e) => {
+      if (e.target.closest("button")) return;
+      addFood(row.dataset.fid);
     });
+    $("#foodResults").querySelectorAll("[data-add]").forEach((b) => b.onclick = () => addFood(b.dataset.add));
     $("#foodResults").querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => {
       const f = allFoods().find((x) => x.id === b.dataset.edit);
       if (f) openFoodModal(f, renderFood);
@@ -1497,8 +1592,9 @@ function renderFood() {
       }
     });
   };
-  $("#foodSearch").oninput = (e) => renderResults(e.target.value);
-  renderResults("");
+  $("#foodSearch").value = lastFoodQuery;
+  $("#foodSearch").oninput = (e) => { lastFoodQuery = e.target.value; renderResults(lastFoodQuery); };
+  renderResults(lastFoodQuery);
 
   $("#foodLogList").querySelectorAll("button").forEach((b) => b.onclick = () => {
     const idx = +b.dataset.idx, act = b.dataset.act;
@@ -1810,6 +1906,18 @@ function renderSettings() {
 
     <div class="card">
       <h2>Weekly schedule</h2>
+      <div class="field"><label>Where do you train?</label>
+        <div class="segment" id="sPlaceSeg">
+          <button data-place="gym" class="${(p.trainingPlace || "gym") === "gym" ? "selected" : ""}">🏋️ Gym</button>
+          <button data-place="home-equip" class="${p.trainingPlace === "home-equip" ? "selected" : ""}">🏠 Home + equipment</button>
+          <button data-place="home-none" class="${p.trainingPlace === "home-none" ? "selected" : ""}">🤸 Home, none</button>
+        </div>
+      </div>
+      <div class="field ${(p.trainingPlace || "gym") !== "home-equip" ? "hidden" : ""}" id="sEquipField"><label>Your equipment</label>
+        <div class="segment" id="sEquipSeg">
+          ${EQUIPMENT_OPTIONS.map((eq) => `<button data-eq="${eq.id}" class="${(p.equipment || []).includes(eq.id) ? "selected" : ""}">${eq.label}</button>`).join("")}
+        </div>
+      </div>
       <div class="field"><label>Days per week</label>
         <div class="segment" id="sDpw">
           ${[3, 4, 5, 6].map((n) => `<button data-n="${n}" class="${sc.daysPerWeek === n ? "selected" : ""}">${n} days</button>`).join("")}
@@ -1870,6 +1978,20 @@ function renderSettings() {
   // schedule editing state
   let dpw = sc.daysPerWeek;
   let days = [...sc.selectedDays];
+  let place = p.trainingPlace || "gym";
+  let equip = p.equipment ? [...p.equipment] : ["dumbbell"];
+  $("#sPlaceSeg").onclick = (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    place = b.dataset.place;
+    $$("#sPlaceSeg button").forEach((x) => x.classList.toggle("selected", x.dataset.place === place));
+    $("#sEquipField").classList.toggle("hidden", place !== "home-equip");
+  };
+  $("#sEquipSeg").onclick = (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const eq = b.dataset.eq;
+    equip = equip.includes(eq) ? equip.filter((x) => x !== eq) : [...equip, eq];
+    b.classList.toggle("selected", equip.includes(eq));
+  };
   const syncCount = () => $("#sDayCount").textContent = `(${days.length}/${dpw})`;
   syncCount();
 
@@ -1900,6 +2022,8 @@ function renderSettings() {
     p.targetWeightKg = +$("#sTarget").value || null;
     p.goal = $("#sGoal").value;
     p.diet = $("#sDiet").value;
+    p.trainingPlace = place;
+    p.equipment = place === "home-equip" ? equip : [];
     applyTheme($("#sTheme").value);
     p.notes = $("#sNotes").value.trim();
     U.schedule = { daysPerWeek: dpw, selectedDays: days, time: $("#sTime").value || "18:00", foodTiming: $("#sFood").value };

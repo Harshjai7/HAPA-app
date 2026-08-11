@@ -21,24 +21,33 @@
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
-/* Light theme — toggled from Settings or the profile popup */
+/* Light theme — toggled from Settings or the profile popup.
+   Colors deliberately darker than a typical light theme for readability. */
 :root[data-theme="light"] {
-  --bg: #f2f4f8;
+  --bg: #e9edf3;
   --bg2: #ffffff;
   --card: #ffffff;
-  --card2: #eef1f6;
-  --border: #d7dde8;
-  --text: #1a2230;
-  --muted: #5a6a80;
-  --accent: #16a34a;
-  --accent2: #15803d;
-  --accent-soft: rgba(22, 163, 74, 0.1);
-  --shadow: 0 2px 12px rgba(30, 40, 60, 0.08);
+  --card2: #dfe5ee;
+  --border: #b7c2d2;
+  --text: #0f172a;
+  --muted: #3d4d66;
+  --accent: #15803d;
+  --accent2: #166534;
+  --accent-soft: rgba(21, 128, 61, 0.14);
+  --info: #075985;
+  --warn: #92580a;
+  --danger: #b91c1c;
+  --shadow: 0 2px 12px rgba(30, 40, 60, 0.12);
 }
-:root[data-theme="light"] .topbar { background: rgba(242, 244, 248, 0.92); }
-:root[data-theme="light"] .bottom-nav { background: rgba(255, 255, 255, 0.97); }
+:root[data-theme="light"] .topbar { background: rgba(233, 237, 243, 0.94); border-bottom-color: var(--border); }
+:root[data-theme="light"] .bottom-nav { background: rgba(255, 255, 255, 0.98); border-top-color: var(--border); }
 :root[data-theme="light"] .btn { color: #ffffff; }
 :root[data-theme="light"] .day-picker button.selected { color: #ffffff; }
+:root[data-theme="light"] .pill.blue { background: rgba(7, 89, 133, 0.12); }
+:root[data-theme="light"] .pill.orange { background: rgba(146, 88, 10, 0.13); }
+:root[data-theme="light"] .video-link { background: rgba(185, 28, 28, 0.1); color: #b91c1c; }
+:root[data-theme="light"] .mistake-box { background: rgba(146, 88, 10, 0.09); border-color: rgba(146, 88, 10, 0.35); }
+:root[data-theme="light"] .today-hero { background: linear-gradient(135deg, rgba(21,128,61,0.12), rgba(7,89,133,0.06)); border-color: rgba(21, 128, 61, 0.4); }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -357,6 +366,8 @@ input, select, textarea { font-family: inherit; }
   padding: 9px 0; border-bottom: 1px solid var(--border); gap: 8px;
 }
 .food-row:last-child { border-bottom: none; }
+.food-pick { cursor: pointer; border-radius: 8px; transition: background 0.12s; }
+.food-pick:hover { background: var(--accent-soft); }
 .food-row .fr-name { font-size: 0.9rem; font-weight: 600; }
 .food-row .fr-sub { font-size: 0.74rem; color: var(--muted); }
 .food-row .fr-kcal { font-weight: 700; white-space: nowrap; }
